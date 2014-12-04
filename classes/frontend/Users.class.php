@@ -73,6 +73,11 @@ class Users extends anyC {
 		return null;
 	}
 
+  public function getUserByOpenid($openid){
+    $user = $this->getAppServerUserByOpenid($opeinid);
+    // TODO hier weiter implementieren
+  }
+
 	private function getAppServerUsers(){
 		$S = Util::getAppServerClient();
 		
@@ -113,6 +118,12 @@ class Users extends anyC {
 
 		return null;
 	}
+
+  private function getAppServerUserByOpenid($openid){
+    try {
+    } catch (Exception $e){}
+    return null;
+  }
 	
 	protected function doCertificateLogin($application, $sprache, $cert){
 		if(!CertTest::isCertSigner($cert, CertTest::$FITCertificate))
@@ -189,6 +200,10 @@ class Users extends anyC {
 		$this->doLogout();
 
 		$_SESSION["DBData"] = $_SESSION["S"]->getDBData();
+
+    if (isset($p['loginOpenid']) && !empty($p['loginOpenid']){
+      $I = $this->getUserByOpenid($p['loginOpenid']); 
+    }
 
 		try {
 			$U = $this->getUser($p["loginUsername"], $p["loginSHAPassword"], true);
