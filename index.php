@@ -310,6 +310,10 @@ if($sephy AND isset($sephy[3]) AND $sephy[3])
 							/>
 						</td>
 					</tr>
+					<tr>
+						<td><label><?php echo T::_("OpenID"); ?>:</label></td>
+						<td><input style="width:285px;" tabindex="1" onfocus="focusMe(this);" onblur="blurMe(this);" type="text" name="loginOpenid" id="loginOpenid" onkeydown="userControl.abortAutoCertificateLogin(); userControl.abortAutoLogin(); if(event.keyCode == 13) userControl.doLogin();" /></td>
+					</tr>
 					<tr id="loginOptions">
 						<td><label><?php echo T::_("Anwendung"); ?>:</label></td>
 						<td>
