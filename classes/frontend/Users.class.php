@@ -201,12 +201,7 @@ class Users extends anyC {
 
 
 		try {
-      if (isset($p['loginOpenid']) && !empty($p['loginOpenid'])){
-        $U = $this->getUserByOpenid($p['loginOpenid']); 
-        $p["loginUsername"]=$U->getA()->username;
-      } else {
   			$U = $this->getUser($p["loginUsername"], $p["loginSHAPassword"], true);
-      }
 			if($U === null) return 0;
 
 			if(get_class($U) == "phynxAltLogin") $p["anwendung"] = $U->A("UserApplication");
