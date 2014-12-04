@@ -51,29 +51,29 @@ require "./system/connect.php";
 
 
 try {
-    # Change 'localhost' to your domain name.
-    $openid = new LightOpenID($_SERVER['HTTP_HOST']);
-    if(!$openid->mode) {
-        if(isset($_POST['openid_identifier'])) {
-            $openid->identity = $_POST['openid_identifier'];
-            # The following two lines request email, full name, and a nickname
-            # from the provider. Remove them if you don't need that data.
-            $openid->required = array('contact/email');
-            $openid->optional = array('namePerson', 'namePerson/friendly');
-            header('Location: ' . $openid->authUrl());
-        }
-?>
+	# Change 'localhost' to your domain name.
+	$openid = new LightOpenID($_SERVER['HTTP_HOST']);
+	if(!$openid->mode) {
+		if(isset($_GET['openid'])){
+			$openid->identity = $_GET['openid'];
+			header('Location: ' . $openid->authUrl());
+		} elseif(isset($_POST['openid'])) {
+			$openid->identity = $_POST['openid'];
+			header('Location: ' . $openid->authUrl());
+		}
+		?>
 <form action="" method="post">
-    OpenID: <input type="text" name="openid_identifier" /> <button>Submit</button>
+	OpenID: <input type="text" name="openid" />
+	<button>Submit</button>
 </form>
 <?php
-    } elseif($openid->mode == 'cancel') {
+	} elseif($openid->mode == 'cancel') {
 				emoFatalError("Login abgebrochen", "Der Loginvorgang wurde durch den Nutzer abgebrochen!", "OpenID-Login abgebrochen!");
     } else {
 			if ($openid->validate()){
-				
+
 				T::load(Util::getRootPath()."libraries");
-				
+
 				if($_SESSION["S"]->checkIfUserLoggedIn() == false) $_SESSION["CurrentAppPlugins"]->scanPlugins();
 
 				$U = new Users();
@@ -83,8 +83,8 @@ try {
 					$_SESSION["S"]->initApp('open3A');
 					header('Location: .');
 				}
-				
-				
+
+
 			} else {
 				emoFatalError("Login fehlgeschlagen", "Der Loginvorgang für ".$openid->identity." war nicht erfolgreich!", "OpenID-Login fehlgeschlagen!");
 			}
