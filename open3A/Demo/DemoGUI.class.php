@@ -36,8 +36,8 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 			$F = new HTMLForm("Dateiupload", array($find,"upload"),"neue Datei importieren");
 			$F->setType($find, "hidden");
 			$F->setType("upload", "file");
-			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
-			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::reload("Right"));
+			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'storeFile', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
+			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "processImport", OnEvent::reload("Right"));
 		}
 	
 		echo $F;
@@ -47,17 +47,17 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		Red::alertD("Parameter1: $p1; Parameter2: $p2");
 	}
 
-	public function processBackground($fileName){
+	public function storeFile($fileName){
 		$tempDir = Util::getTempDir();
 		$tempFile = $tempDir.$fileName.".tmp";
 		copy($tempFile,FileStorage::getFilesDir().$fileName);
 		unlink($tempFile);		
 	}
 	
-	public function saveImage($data){
+	public function processImport($data){
 		$data=json_decode($data);
 		$obj=reset($data);
-		$this->changeA($obj->name.ucfirst($str), $obj->value);
+		$this->changeA($obj->name, $obj->value);
 		$this->newMe(true,true);
 	}	
 }
