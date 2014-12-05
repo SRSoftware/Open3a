@@ -18,6 +18,7 @@
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
 class ImportLightGUI extends ImportLight implements iGUIHTML2 {
+	
 	function  __construct($ID) {
 		parent::__construct($ID);
 
@@ -25,36 +26,46 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 	
 	function getHTML($id){
 		$this->loadMeOrEmpty();
-		$find="Dateiname";
+		$field="Dateiname";
 
-		$file = $this->A($find);
+		$file = $this->A($field);
 		if ($file != null && !empty($file)){
-			$F = new HTMLForm("Dateiupload", array($find),"importierte Datei");
-			$F->setValue($find, $file);
-			$F->setType($find, 'readonly');
+			$F = new HTMLForm("Dateiupload", array($field),"importierte Datei");
+			$F->setValue($field, $file);
+			$F->setType($field, 'readonly');
 		} else {
-			$F = new HTMLForm("Dateiupload", array($find,"upload"),"neue Datei importieren");
-			$F->setType($find, "hidden");
+			$F = new HTMLForm("Dateiupload", array($field,"upload"),"neue Datei importieren");
+			$F->setType($field, "hidden");
+			$F->setValue($field, "");
 			$F->setType("upload", "file");
-			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('ImportLight', '".$this->getID()."', 'storeFile', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
-			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::reload("Right"));
+			$F->addJSEvent("upload", "onChange", "\$j('#Dateiupload input[name=$field]').val(fileName);");
+			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::reload("Right").OnEvent::clear("Left"));
 		}
 	
 		echo $F;
 	}
 	
-	public function storeFile($fileName){
-		$tempDir = Util::getTempDir();
-		$tempFile = $tempDir.$fileName.".tmp";
-		copy($tempFile,FileStorage::getFilesDir().$fileName);
-		unlink($tempFile);		
-	}
-	
 	public function processImport($data){
 		$data=json_decode($data);
 		$obj=reset($data);
-		$this->changeA($obj->name, $obj->value);
-		$this->newMe(true,true);
+		if ($obj->name == "Dateiname"){
+			$fileName=$obj->value;
+			if ($fileName == ''){
+				Red::alertD("Es wurde keine Datei hochgeladen!");
+			}
+			$tempDir = Util::getTempDir();
+			$tempFile = $tempDir.$fileName.".tmp";
+			if (file_exists($tempFile)){
+				copy($tempFile,FileStorage::getFilesDir().$fileName);
+				unlink($tempFile);
+				$this->changeA($obj->name, $obj->value);
+				$this->newMe(true,true);
+			} else {
+				Red::alertD("Datei wurde nicht korrekt hochgeladen!");
+			}
+		} else {
+			Red::alertD("Es wurden ungültige Daten übermittelt!");
+		}
 	}	
 }
 ?>
