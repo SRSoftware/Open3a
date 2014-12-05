@@ -23,7 +23,7 @@
 		<menuName>ImportLight</menuName>
 		<collection>mImportLight</collection>
 		
-		<icon>./images/navi/tea.png</icon>
+		<icon>./images/navi/save.png</icon>
 		<folder>ImportLight</folder>
 		<version>2.1</version>
 		<javascript>ImportLight.js</javascript>

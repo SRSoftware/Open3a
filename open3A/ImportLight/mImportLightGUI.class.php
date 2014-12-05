@@ -28,7 +28,7 @@ class mImportLightGUI extends anyC implements iGUIHTMLMP2 {
 		$gui = new HTMLGUIX($this);
 		$gui->version("mImportLight");
 
-		$gui->name("ImportLight");
+		$gui->name("Import");
 
 		$gui->attributes(array("Dateiname"));
 
