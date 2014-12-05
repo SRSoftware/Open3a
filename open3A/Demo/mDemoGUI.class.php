@@ -1,0 +1,42 @@
+<?php
+/**
+ *  This file is part of phynx.
+
+ *  phynx is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 3 of the License, or
+ *  (at your option) any later version.
+
+ *  phynx is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
+ */
+class mDemoGUI extends anyC implements iGUIHTMLMP2 {
+	function  __construct() {
+		parent::__construct();
+
+		$this->setParser("DemoFeld3", "Util::CLDateParserE");
+		$this->setParser("DemoFeld5", "Util::CLNumberParserZ");
+	}
+
+	public function getHTML($id, $page){
+		$this->loadMultiPageMode($id, $page, 0);
+
+		$gui = new HTMLGUIX($this);
+		$gui->version("mDemo");
+
+		$gui->name("Demo");
+
+		$gui->attributes(array("DemoFeld1", "DemoFeld3", "DemoFeld5"));
+
+		return $gui->getBrowserHTML($id);
+
+	}
+}
+?>
