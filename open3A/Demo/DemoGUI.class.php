@@ -81,7 +81,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$gui->name("Vorlage");
 		
 		$B = $gui->addSideButton("Dateiname", "./open3A/Vorlagen/logo.png");
-		$B->popup("", "Dateiname", "Demo", $this->getID(), "demoPopup", "Dateiname");
+		$B->popup("", "Datei hochladen", "Demo", $this->getID(), "demoPopup", "Dateiname");
 		
 	
 		return $ST.$T.$gui->getEditHTML();
@@ -125,7 +125,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 			die($T);
 		}
 		
-		$initFields = array("Dateiname");
+		$initFields = array($find);
 		
 		$initFields[] = "upload";
 		
@@ -133,98 +133,15 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$newData = json_decode($newData);
 
 		$F = new HTMLForm("Dateiupload", array_merge($initFields, $fields));
-		$F->setValue("Dateiname", $find);
-		$F->setType("Dateiname", "hidden");
+		$F->setValue($find, $find);
+		$F->setType($find, "hidden");
 		$F->getTable()->setColWidth(1, 120);
 		
-		$F->insertSpaceAbove("upload", "Hintergrund");
+		$F->insertSpaceAbove("upload", "Datei zum Importieren");
 		$F->setType("upload", "file");
-		$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=Dateiname]').val(fileName); });");
+		$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=$find]').val(fileName); });");
 		
-		foreach($fields AS $key => $name){
-			$description = "";
-			$doc = $attributes[$name]->getDocComment();
-			preg_match_all("/@label (.*)\n/", $doc, $labels);
-			
-			if(isset($labels[1][0]))
-				$F->setLabel($name, $labels[1][0]);
-			
-			
-			preg_match_all("/@group (.*)\n/", $doc, $groups);
-			
-			if(isset($groups[1][0]))
-				$F->insertSpaceAbove($name, $groups[1][0]);
-			
-			
-			$possibleValues = null;
-			preg_match_all("/@values (.*)\n/", $doc, $values);
-			if(isset($values[1][0])){
-				$possibleValues = array();
-				$ex = explode(",", $values[1][0]);
-				foreach($ex AS $k => $v)
-					$possibleValues[trim($v)] = trim($v);
-				
-				$description = "Mögliche Werte: ".implode(", ", $possibleValues);
-			}
-			
-			$isOptional = null;
-			preg_match_all("/@optional (.*)\n/", $doc, $groups);
-			
-			if(isset($groups[1][0]))
-				$isOptional = $groups[1][0] == "true";
-			
-			$parser = "DemoGUI::parserLabel";
-			$type = gettype(self::$instance->A($name));
-			
-			preg_match_all("/@type (.*)\n/", $doc, $groups);
-			if(isset($groups[1][0]))
-				if($groups[1][0] == "string" AND $type == "array"){
-					$type = "string";
-					self::$instance->changeA($name, implode(" ", self::$instance->A($name)));
-				}
-					
-			
-			if($type == "array" AND count(self::$instance->A($name)) == 2)
-				$parser = "DemoGUI::parserPosition";
-			
-			if($type == "array" AND count(self::$instance->A($name)) == 3)
-				$parser = "DemoGUI::parserFont";
-			
-			if($type == "boolean")
-				$parser = "DemoGUI::parserShow";
-			
-			preg_match_all("/@description (.*)\n/", $doc, $values);
-			if(isset($values[1][0]))
-				$description .= ($description != "" ? "<br />" : "").$values[1][0];
-			
-			$F->setType($name, "parser", $newData, array($parser, array_merge(!is_array(self::$instance->A($name)) ? array(self::$instance->A($name)) : self::$instance->A($name), array($name, $isOptional, $this->A("VorlageNewFonts")))));
-			if($description != "")
-				$F->setDescriptionField($name, $description);
-			
-				
-			preg_match_all("/@requires (.*)\n/", $doc, $values);
-			if(isset($values[1][0])){
-				try {
-					$c = $values[1][0];
-					$c = new $c();
-				} catch(Exception $e){
-					$F->setType($name, "hidden");
-				}
-			}
-			#if($possibleValues)
-			#	$F->setType($name, "select", $value, $possibleValues);
-		}
-		
-		$F->setSaveJSON("Importieren", "", "Demo", $this->getID(), "saveImage", OnEvent::closePopup("Demo").OnEvent::reload("Left"));
-		
-		echo "<p><small style=\"color:grey;\">Numerische Werte haben die Einheit Millimeter.<br />Positionen (X,Y) beziehen sich auf die linke obere Ecke.</small></p>";
-		
-		if($find == "background")
-			echo "<p>Hier können Sie eine PDF-Datei hochladen, um sie als Hintergrund-Vorlage zu verwenden. Bitte beachten Sie, dass maximal die PDF-Version 1.4 verwendet werden kann.</p>";
-		
-		if($find == "append")
-			echo "<p>Hier können Sie eine PDF-Datei hochladen, um sie als Anhang zu verwenden. Bitte beachten Sie, dass maximal die PDF-Version 1.4 verwendet werden kann.</p>";
-		
+		$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::closePopup("Demo").OnEvent::reload("Left"));
 		
 		echo "<div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
 	}
@@ -244,8 +161,12 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	}
 	
 	public function saveImage($data){
-		//Red::alertD("Dateiname");		
-		Red::alertD(print_r($data,true));		
+		$data=json_decode($data);
+		foreach ($data as $obj){
+			echo $obj->name.': '.$obj->value;
+		}
+		//print $data->name.': '.$data->value;
+				
 	}	
 }
 ?>
