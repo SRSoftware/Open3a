@@ -17,7 +17,7 @@
  * 
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
-class DemoGUI extends Demo implements iGUIHTML2 {
+class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 	function  __construct($ID) {
 		parent::__construct($ID);
 
@@ -36,17 +36,13 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 			$F = new HTMLForm("Dateiupload", array($find,"upload"),"neue Datei importieren");
 			$F->setType($find, "hidden");
 			$F->setType("upload", "file");
-			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'storeFile', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
-			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "processImport", OnEvent::reload("Right"));
+			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('ImportLight', '".$this->getID()."', 'storeFile', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
+			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::reload("Right"));
 		}
 	
 		echo $F;
 	}
 	
-	public static function demoRME($p1, $p2){
-		Red::alertD("Parameter1: $p1; Parameter2: $p2");
-	}
-
 	public function storeFile($fileName){
 		$tempDir = Util::getTempDir();
 		$tempFile = $tempDir.$fileName.".tmp";

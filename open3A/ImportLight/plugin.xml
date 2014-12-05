@@ -19,19 +19,19 @@
 -->
 <phynx>
 	<plugin>
-		<name>Demo</name>
-		<menuName>Demo</menuName>
-		<collection>mDemo</collection>
+		<name>ImportLight</name>
+		<menuName>ImportLight</menuName>
+		<collection>mImportLight</collection>
 		
 		<icon>./images/navi/tea.png</icon>
-		<folder>Demo</folder>
+		<folder>ImportLight</folder>
 		<version>2.1</version>
-		<javascript>Demo.js</javascript>
+		<javascript>ImportLight.js</javascript>
 		
 		<adminOnly>false</adminOnly>
 
 		<deploy>
-			<table name="Demo" />
+			<table name="ImportLight" />
 		</deploy>
 	</plugin>
 </phynx>

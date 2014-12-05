@@ -17,8 +17,8 @@
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
 
-var Demo = {
-	demoJS: function(test){
+var ImportLight = {
+	ImportLightJS: function(test){
 		alert(test);
 	}
 }

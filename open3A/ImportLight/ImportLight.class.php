@@ -17,6 +17,6 @@
  * 
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
-class Demo extends PersistentObject {
+class ImportLight extends PersistentObject {
 }
 ?>

@@ -17,7 +17,7 @@
  * 
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
-class mDemoGUI extends anyC implements iGUIHTMLMP2 {
+class mImportLightGUI extends anyC implements iGUIHTMLMP2 {
 	function  __construct() {
 		parent::__construct();
 	}
@@ -26,9 +26,9 @@ class mDemoGUI extends anyC implements iGUIHTMLMP2 {
 		$this->loadMultiPageMode($id, $page, 0);
 
 		$gui = new HTMLGUIX($this);
-		$gui->version("mDemo");
+		$gui->version("mImportLight");
 
-		$gui->name("Demo");
+		$gui->name("ImportLight");
 
 		$gui->attributes(array("Dateiname"));
 
