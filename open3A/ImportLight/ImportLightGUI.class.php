@@ -104,6 +104,12 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		Red::alertD('Konnte nicht entscheiden, ob diese CSV-Datei Adressen oder Artikel enthält!');
 	}
 	
+	public function resolve(&$name,$key,$type){
+		if ($type == 'adresse'){
+			Red::alertD($name);
+		}
+	}
+	
 	public function importFrom($file){
 		$data = file($file);
 		$separator=$this->getSeparator(reset($data));
@@ -112,6 +118,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		foreach ($data as $line){
 			if ($keys == null){
 				$keys=$this->explode($separator, $line);								
+				array_walk($keys, array($this,'resolve'),$type);
 			} else {
 				$values=$this->explode($separator, $line);
 				if ($type == 'adresse'){
