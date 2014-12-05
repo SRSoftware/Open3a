@@ -21,14 +21,6 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	function  __construct($ID) {
 		parent::__construct($ID);
 
-		/**
-		 * PARSERS
-		 *
-		 * Use Util::CLDateParserE, if the field contais a date or is empty
-		 * Use Util::CLNumberParserZ if the field contains a number and you always want to display at least two decimals
-		 */
-		$this->setParser("DemoFeld3", "Util::CLDateParserE");
-		$this->setParser("DemoFeld5", "Util::CLNumberParserZ");
 	}
 	
 	function getHTML($id){
@@ -76,41 +68,22 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		/**
 		 * THE EDIT-GUI
 		 */
-		$gui = new HTMLGUI();
+		/*$gui = new HTMLGUI();
 		$gui->setObject($this);
 		$gui->setName("Demo");
-
-		/**
-		 * LABELS
-		 */
-		$gui->setLabel("DemoFeld1", "Name");
-		$gui->setLabel("DemoFeld2", "Beschreibung");
-		$gui->setLabel("DemoFeld3", "Datum");
-		$gui->setLabel("DemoFeld4", "Aktiv?");
-		$gui->setLabel("DemoFeld5", "Preis");
-		$gui->setLabel("DemoFeld6", "Typ");
-
-		/**
-		 * TYPES
-		 */
-		$gui->setType("DemoFeld2", "textarea");
-		$gui->setType("DemoFeld3", "calendar");
-		$gui->setType("DemoFeld4", "checkbox");
-		$gui->setType("DemoFeld6", "select");
-		$gui->setType("DemoFeld7", "hidden");
-
-		/**
-		 * VALUES
-		 */
-		$gui->setOptions("DemoFeld6", array("0", "1", "2"), array("keine Angabe", "langsam", "schnell"));
-
-		/**
-		 * LAYOUT
-		 */
-		$gui->insertSpaceAbove("DemoFeld4");
-
+		
+		$gui->setLabel("Dateiname", "Datei");
+		$gui->setType("Dateiname", "image");
 		
 		$gui->setStandardSaveButton($this);
+		*/
+		
+		$gui = new HTMLGUIX($this);
+		$gui->name("Vorlage");
+		
+		$B = $gui->addSideButton("Dateiname", "./open3A/Vorlagen/logo.png");
+		$B->popup("", "Dateiname", "Demo", $this->getID(), "demoPopup", "Datename");
+		
 	
 		return $ST.$T.$gui->getEditHTML();
 	}
@@ -122,16 +95,13 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	/**
 	 * returns a HTML table with all known demo-entries
 	 */
-	public static function demoPopup(){
-		$AC = new anyC();
-		$AC->setCollectionOf("Demo");
+	public static function demoPopup($find){
+		
+		$F = new HTMLForm("FormVorlageneditor", array_merge($initFields, $fields));
 
-		$T = new HTMLTable(1);
-		while($D = $AC->getNextEntry()){
-			$T->addRow(array($D->A("DemoFeld1")));
-		}
-
-		echo $T;
+		echo $F;
 	}
+	
+	
 }
 ?>

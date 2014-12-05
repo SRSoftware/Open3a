@@ -33,7 +33,7 @@ class mDemoGUI extends anyC implements iGUIHTMLMP2 {
 
 		$gui->name("Demo");
 
-		$gui->attributes(array("DemoFeld1", "DemoFeld3", "DemoFeld5"));
+		$gui->attributes(array("Dateiname"));
 
 		return $gui->getBrowserHTML($id);
 
