@@ -20,9 +20,6 @@
 class mDemoGUI extends anyC implements iGUIHTMLMP2 {
 	function  __construct() {
 		parent::__construct();
-
-		$this->setParser("DemoFeld3", "Util::CLDateParserE");
-		$this->setParser("DemoFeld5", "Util::CLNumberParserZ");
 	}
 
 	public function getHTML($id, $page){

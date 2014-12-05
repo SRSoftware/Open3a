@@ -25,6 +25,8 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	
 	function getHTML($id){
 		$this->loadMeOrEmpty();
+		
+		return $this->demoPopup("Dateiname");
 		/**
 		 * DEFAULT HTML TABLE
 		 */
@@ -67,7 +69,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		/**
 		 * THE EDIT-GUI
 		 */
-		/*$gui = new HTMLGUI();
+		$gui = new HTMLGUI();
 		$gui->setObject($this);
 		$gui->setName("Demo");
 		
@@ -75,7 +77,6 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$gui->setType("Dateiname", "image");
 		
 		$gui->setStandardSaveButton($this);
-		*/
 		
 		$gui = new HTMLGUIX($this);
 		$gui->name("Vorlage");
@@ -87,6 +88,34 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		return $ST.$T.$gui->getEditHTML();
 	}
 
+
+
+	/**
+	 * returns a HTML table with all known demo-entries
+	 */
+	public function demoPopup($find){
+		$fields = $this->getSub($find);
+		$file = $this->A($find);
+		$exists = $file != null && !empty($file);
+		$initFields = array($find);
+		if (!$exists){
+			$initFields[]="upload";
+		}
+	
+		$F = new HTMLForm("Dateiupload", $initFields);
+		$F->getTable()->setColWidth(1, 120);
+		$F->setValue($find, $this->A($find));
+		if (!$exists) {
+			//$F->setType($find, "hidden");
+			$F->insertSpaceAbove("upload", "Datei zum Importieren");
+			$F->setType("upload", "file");
+			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=$find]').val(fileName); });");
+			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::reload("Right"));
+		}
+	
+		echo "<div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
+	}
+	
 	public static function demoRME($p1, $p2){
 		Red::alertD("Parameter1: $p1; Parameter2: $p2");
 	}
@@ -99,52 +128,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		return $fields;
 	}
 
-	
-	
-	/**
-	 * returns a HTML table with all known demo-entries
-	 */
-	public function demoPopup($find){
-		$fields = $this->getSub($find);
-		$attributes = array();
-		
-		if(count($attributes) == 0 AND extension_loaded("eAccelerator")){
-			if(is_writable(Util::getRootPath()) AND !file_exists(Util::getRootPath().".htaccess")){
-				file_put_contents(Util::getRootPath().".htaccess", "php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0");
-				echo OnEvent::script(OnEvent::reloadPopup("Vorlage"));
-				die();
-			}
-			
-			$T = new HTMLTable(1);
-			
-			$B = new Button("", "warning", "icon");
-			$B->style("float:left;margin-right:10px;");
-			
-			$T->addRow(array($B."Das System kann die Liste der Optionen nicht auslesen. Bitte erstellen Sie im Verzeichnis <code>".Util::getRootPath()."</code> eine Datei Namens <b>.htaccess</b> mit folgenden Inhalt:<br /><br /><pre style=\"font-size:12px;padding:5px;\">php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0</pre>"));
-			$T->setColClass(1, "highlight");
-			die($T);
-		}
-		
-		$initFields = array($find);
-		
-		$initFields[] = "upload";
-		
-		$newData = $this->A("Demo".ucfirst($find));
-		$newData = json_decode($newData);
 
-		$F = new HTMLForm("Dateiupload", array_merge($initFields, $fields));
-		$F->setValue($find, $find);
-		$F->setType($find, "hidden");
-		$F->getTable()->setColWidth(1, 120);
-		
-		$F->insertSpaceAbove("upload", "Datei zum Importieren");
-		$F->setType("upload", "file");
-		$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=$find]').val(fileName); });");
-		
-		$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::closePopup("Demo").OnEvent::reload("Left"));
-		
-		echo "<div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
-	}
 	
 	public function processBackground($fileName){
 		$ex = explode(".", strtolower($fileName));
@@ -157,7 +141,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$imgPath = $tempDir."/".$fileName.".tmp";
 		
 		copy($imgPath,FileStorage::getFilesDir()."$fileName");
-		unlink($imgPath);
+		unlink($imgPath);		
 	}
 	
 	public function saveImage($data){
@@ -165,6 +149,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$obj=reset($data);
 		$this->changeA($obj->name, $obj->value);
 		$this->saveMe();
+		echo "saved?";
 	}	
 }
 ?>
