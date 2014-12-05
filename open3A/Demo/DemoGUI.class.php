@@ -36,7 +36,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 			$F = new HTMLForm("Dateiupload", array($find,"upload"),"neue Datei importieren");
 			$F->setType($find, "hidden");
 			$F->setType("upload", "file");
-			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=$find]').val(fileName); });");
+			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ \$j('#Dateiupload input[name=$find]').val(fileName); });");
 			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::reload("Right"));
 		}
 	
@@ -48,17 +48,10 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	}
 
 	public function processBackground($fileName){
-		$ex = explode(".", strtolower($fileName));
-		
-		$tempDir = Util::getTempFilename();
-		
-		unlink($tempDir);
-		$tempDir = dirname($tempDir);
-		
-		$imgPath = $tempDir."/".$fileName.".tmp";
-		
-		copy($imgPath,FileStorage::getFilesDir()."$fileName");
-		unlink($imgPath);		
+		$tempDir = Util::getTempDir();
+		$tempFile = $tempDir.$fileName.".tmp";
+		copy($tempFile,FileStorage::getFilesDir().$fileName);
+		unlink($tempFile);		
 	}
 	
 	public function saveImage($data){
@@ -66,7 +59,6 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$obj=reset($data);
 		$this->changeA($obj->name.ucfirst($str), $obj->value);
 		$this->newMe(true,true);
-
 	}	
 }
 ?>
