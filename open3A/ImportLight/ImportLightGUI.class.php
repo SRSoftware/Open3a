@@ -56,6 +56,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			$tempDir = Util::getTempDir();
 			$tempFile = $tempDir.$fileName.".tmp";
 			if (file_exists($tempFile)){
+				$this->importFrom($tempFile);
 				copy($tempFile,FileStorage::getFilesDir().$fileName);
 				unlink($tempFile);
 				$this->changeA($obj->name, $obj->value);
@@ -66,6 +67,33 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		} else {
 			Red::alertD("Es wurden ungültige Daten übermittelt!");
 		}
-	}	
+	}
+
+	public static function getSeparator($string){
+		$count=count_chars(trim($string),0);
+		$semicolon=$count[ord(';')];
+		$comma=$count[ord(',')];
+		if ($semicolon > $comma){
+			return ';';
+		}
+		if ($comma < 1){
+			Red::alertD("Dies schein keine Datei mit komma-separierten Daten zu sein!");
+		}
+		return ',';
+	}
+	
+	public function importFrom($file){
+		$data = file($file);
+		$separator=$this->getSeparator(reset($data));
+
+		$keys=null;
+		foreach ($data as $line){
+			if ($keys == null){
+				
+			} else {
+				
+			}
+		}
+	}
 }
 ?>
