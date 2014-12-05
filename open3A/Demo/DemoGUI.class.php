@@ -25,75 +25,8 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	
 	function getHTML($id){
 		$this->loadMeOrEmpty();
-		
-		return $this->demoPopup("Dateiname");
-		/**
-		 * DEFAULT HTML TABLE
-		 */
-		$T = new HTMLTable(1);
+		$find="Dateiname";
 
-		/**
-		 * DEFAULT BUTTON
-		 *
-		 * This button calls a JS-function when clicked
-		 */
-		$BJS = new Button("JS-Funktion", "computer");
-		$BJS->onclick("Demo.demoJS('erfolgreich');");
-		$T->addRow($BJS); //Add button to table
-
-
-		/**
-		 * SIDE TABLE
-		 */
-		$ST = new HTMLSideTable("right");
-
-		/**
-		 * RME BUTTON
-		 *
-		 * This Button executes a PHP method when clicked
-		 */
-		$BRME = new Button("RME", "computer");
-		$BRME->rmePCR("Demo", "-1", "demoRME", array("'par1'", "'par2'"), " ");
-		$ST->addRow($BRME); //Add button to table
-
-		/**
-		 * POPUP BUTTON
-		 *
-		 * This Button executes a PHP method when clicked
-		 */
-		$BPOP = new Button("Popup\nanzeigen", "template");
-		$BPOP->popup("demoPopup", "Popup-Title", "Demo", -1, "demoPopup");
-		$ST->addRow($BPOP); //Add button to table
-
-
-		/**
-		 * THE EDIT-GUI
-		 */
-		$gui = new HTMLGUI();
-		$gui->setObject($this);
-		$gui->setName("Demo");
-		
-		$gui->setLabel("Dateiname", "Datei");
-		$gui->setType("Dateiname", "image");
-		
-		$gui->setStandardSaveButton($this);
-		
-		$gui = new HTMLGUIX($this);
-		$gui->name("Vorlage");
-		
-		$B = $gui->addSideButton("Dateiname", "./open3A/Vorlagen/logo.png");
-		$B->popup("", "Datei hochladen", "Demo", $this->getID(), "demoPopup", "Dateiname");
-		
-	
-		return $ST.$T.$gui->getEditHTML();
-	}
-
-
-
-	/**
-	 * returns a HTML table with all known demo-entries
-	 */
-	public function demoPopup($find){
 		$fields = $this->getSub($find);
 		$file = $this->A($find);
 		$exists = $file != null && !empty($file);
@@ -147,9 +80,9 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	public function saveImage($data){
 		$data=json_decode($data);
 		$obj=reset($data);
-		$this->changeA($obj->name, $obj->value);
+		$this->changeA($obj->name.ucfirst($str), $obj->value);
 		$this->saveMe();
-		echo "saved?";
+
 	}	
 }
 ?>
