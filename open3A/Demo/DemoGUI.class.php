@@ -215,7 +215,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 			#	$F->setType($name, "select", $value, $possibleValues);
 		}
 		
-		$F->setSaveJSON("Speichern", "", "Demo", $this->getID(), "saveImage", OnEvent::closePopup("Demo").OnEvent::reload("Left"));
+		$F->setSaveJSON("Importieren", "", "Demo", $this->getID(), "saveImage", OnEvent::closePopup("Demo").OnEvent::reload("Left"));
 		
 		echo "<p><small style=\"color:grey;\">Numerische Werte haben die Einheit Millimeter.<br />Positionen (X,Y) beziehen sich auf die linke obere Ecke.</small></p>";
 		
