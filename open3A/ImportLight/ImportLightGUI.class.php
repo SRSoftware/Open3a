@@ -14,16 +14,16 @@
 
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
 class ImportLightGUI extends ImportLight implements iGUIHTML2 {
-	
+
 	function  __construct($ID) {
 		parent::__construct($ID);
 
 	}
-	
+
 	function getHTML($id){
 		$this->loadMeOrEmpty();
 		$field="Dateiname";
@@ -41,10 +41,10 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			$F->addJSEvent("upload", "onChange", "\$j('#Dateiupload input[name=$field]').val(fileName);");
 			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::reload("Right").OnEvent::clear("Left"));
 		}
-	
+
 		echo $F;
 	}
-	
+
 	public function processImport($data){
 		$data=json_decode($data);
 		$obj=reset($data);
@@ -81,7 +81,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		}
 		return ',';
 	}
-	
+
 	public function removeEnclosing(&$value, $key){
 		if (substr($value, 0,1) == '"' && substr($value, -1) == '"'){
 			$value = substr($value, 1,-1);
@@ -89,27 +89,48 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			$value = substr($value, 1,-1);
 		}
 	}
-	
+
 	public function explode($delimiter,$line){
 		$arr=explode($delimiter, trim($line));
 		array_walk($arr, array($this,'removeEnclosing'));
 		return $arr;
-		
+
 	}
-	
+
 	public function getType($data){
 		$data=strtolower($data);
 		if (strpos($data, 'kundennummer') !== false) return 'adresse';
 		if (strpos($data, 'artikelnummer')!== false) return 'artikel';
 		Red::alertD('Konnte nicht entscheiden, ob diese CSV-Datei Adressen oder Artikel enthält!');
 	}
-	
+
 	public function resolve(&$name,$key,$type){
 		if ($type == 'adresse'){
-			Red::alertD($name);
+			if ($name=='Kundennummer'){
+				$name = null;
+			} elseif ($name=='Anrede') {
+				$name='anrede';
+			} elseif ($name=='Ansprechpartner') {
+				$name=null;
+			} elseif ($name=='Firma') {
+				$name='firma';
+			} elseif ($name=='Matchcode') {
+				$name=null;
+			} elseif ($name=='Name') {
+				$name='nachname';
+				} elseif ($name=='Straße') {
+					$name='strasse';				
+			} elseif ($name=='Vorname') {
+				$name='vorname';
+			} elseif ($name=='Zusatz') {
+				$name='zusatz1';
+			} else {
+				/* $name=null; /*/
+				Red::alertD($name); // */
+			}
 		}
 	}
-	
+
 	public function importFrom($file){
 		$data = file($file);
 		$separator=$this->getSeparator(reset($data));
@@ -117,7 +138,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		$keys=null;
 		foreach ($data as $line){
 			if ($keys == null){
-				$keys=$this->explode($separator, $line);								
+				$keys=$this->explode($separator, $line);
 				array_walk($keys, array($this,'resolve'),$type);
 			} else {
 				$values=$this->explode($separator, $line);
@@ -125,10 +146,13 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 					$object=new Adresse(-1);
 				}
 				foreach ($values as $key => $value){
-					$object->changeA($keys[$key], $value);
+					if (!empty($value) && $keys[$key]!=null){
+						$object->changeA($keys[$key], $value);
+					}
 					print $keys[$key].' : '.$value.PHP_EOL;
 				}
-				print '--------------'.PHP_EOL;				
+				print '--------------'.PHP_EOL;
+				$object->newMe();
 			}
 		}
 	}
