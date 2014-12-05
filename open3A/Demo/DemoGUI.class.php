@@ -27,42 +27,26 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$this->loadMeOrEmpty();
 		$find="Dateiname";
 
-		$fields = $this->getSub($find);
 		$file = $this->A($find);
-		$exists = $file != null && !empty($file);
-		$initFields = array($find);
-		if (!$exists){
-			$initFields[]="upload";
-		}
-	
-		$F = new HTMLForm("Dateiupload", $initFields);
-		$F->getTable()->setColWidth(1, 120);
-		$F->setValue($find, $this->A($find));
-		if (!$exists) {
-			//$F->setType($find, "hidden");
-			$F->insertSpaceAbove("upload", "Datei zum Importieren");
+		if ($file != null && !empty($file)){
+			$F = new HTMLForm("Dateiupload", array($find),"importierte Datei");
+			$F->setValue($find, $file);
+			$F->setType($find, 'readonly');
+		} else {
+			$F = new HTMLForm("Dateiupload", array($find,"upload"),"neue Datei importieren");
+			$F->setType($find, "hidden");
 			$F->setType("upload", "file");
 			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Demo', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiupload input[name=$find]').val(fileName); });");
 			$F->setSaveJSON("Import starten", "", "Demo", $this->getID(), "saveImage", OnEvent::reload("Right"));
 		}
 	
-		echo "<div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
+		echo $F;
 	}
 	
 	public static function demoRME($p1, $p2){
 		Red::alertD("Parameter1: $p1; Parameter2: $p2");
 	}
 
-	private function getSub($find){
-	
-		$fields = array();
-
-	
-		return $fields;
-	}
-
-
-	
 	public function processBackground($fileName){
 		$ex = explode(".", strtolower($fileName));
 		
@@ -81,7 +65,7 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 		$data=json_decode($data);
 		$obj=reset($data);
 		$this->changeA($obj->name.ucfirst($str), $obj->value);
-		$this->saveMe();
+		$this->newMe(true,true);
 
 	}	
 }
