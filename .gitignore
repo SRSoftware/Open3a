@@ -1,4 +1,6 @@
 system/DBData/
+system/IECache/
+specifics
 .buildpath
 .project
 .settings
