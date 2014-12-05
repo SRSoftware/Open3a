@@ -162,11 +162,9 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	
 	public function saveImage($data){
 		$data=json_decode($data);
-		foreach ($data as $obj){
-			echo $obj->name.': '.$obj->value;
-		}
-		//print $data->name.': '.$data->value;
-				
+		$obj=reset($data);
+		$this->changeA($obj->name, $obj->value);
+		$this->saveMe();
 	}	
 }
 ?>
