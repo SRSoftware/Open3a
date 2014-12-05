@@ -20,21 +20,19 @@
 
 class mImportLightGUI extends anyC implements iGUIHTMLMP2 {
 
+  private function onclick(){
+    return "onclick=\"contentManager.rmePCR('Foo', 1, 'Foo', ['1'], function(transport){ Foo });\"";
+  }
+
 	public function getHTML($id, $page){
-		/*$this->loadMultiPageMode($id, $page, 0);
-
-		$gui = new HTMLGUIX($this);
-		$gui->version("mShop");
-
-		$gui->name("Shop");
-		
-		$gui->attributes(array());
-		
-		return $gui->getBrowserHTML($id);*/
-		
-		
-		
-		return "<iframe src=\"https://www.open3a.de/page-Kundenbereich-Plugins\" style=\"border:0px;width:100%;\" id=\"frameShop\"></iframe>".OnEvent::script("\$j('#frameShop').css('height', contentManager.maxHeight());");
+    return '
+    <form id="importcsv">
+      <input name="Datei" type="file" size="50" maxlength="100000" accept="text/*"><br/>
+      <div '.$this->onclick().'>
+        <img src="images/navi/up.png"/>Hochladen
+      </div>
+    </form>
+	  ';	
 	}
 
 
