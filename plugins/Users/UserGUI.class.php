@@ -60,6 +60,7 @@ class UserGUI extends User implements iGUIHTML2 {
 			"SHApassword",
 			"language",
 			"UserPosition",
+      "openid",
 			"isAdmin",
 			"UserEmail",
 			"UserICQ",
@@ -79,6 +80,7 @@ class UserGUI extends User implements iGUIHTML2 {
 		$gui->label("UserJabber","Jabber");
 		$gui->label("UserSkype","Skype");
 		$gui->label("UserTel","Telefon");
+    $gui->label("openid","OpenID");
 		
 		$gui->type("language","select", array("de_DE" => "Deutsch (Deutschland) €", "de_DE_EUR" => "Deutsch (Deutschland) EUR", "de_CH" => "Deutsch (Schweiz) sFr", "de_CH_CHF" => "Deutsch (Schweiz) CHF", "en_GB" => "English (United Kingdom)"));
 		#$gui->setOptions("language",);

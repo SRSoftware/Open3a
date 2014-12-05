@@ -73,6 +73,16 @@ class Users extends anyC {
 		return null;
 	}
 
+  public function getUserByOpenid($openid){
+    $this->addAssocV3("openid","=",$openid);
+    $user = $this->getNextEntry();
+    
+    if($user != null) return $user;
+
+    // TODO hier weiter implementieren
+    return null;
+  }
+
 	private function getAppServerUsers(){
 		$S = Util::getAppServerClient();
 		
@@ -100,7 +110,6 @@ class Users extends anyC {
 		try {
 			$S = Util::getAppServerClient(false);
 			if($S != null){
-
 				$user = $S->getUser($username, $password);
 
 				if($user != null) {
@@ -113,7 +122,7 @@ class Users extends anyC {
 
 		return null;
 	}
-	
+
 	protected function doCertificateLogin($application, $sprache, $cert){
 		if(!CertTest::isCertSigner($cert, CertTest::$FITCertificate))
 			return 0;
@@ -190,8 +199,9 @@ class Users extends anyC {
 
 		$_SESSION["DBData"] = $_SESSION["S"]->getDBData();
 
+
 		try {
-			$U = $this->getUser($p["loginUsername"], $p["loginSHAPassword"], true);
+  			$U = $this->getUser($p["loginUsername"], $p["loginSHAPassword"], true);
 			if($U === null) return 0;
 
 			if(get_class($U) == "phynxAltLogin") $p["anwendung"] = $U->A("UserApplication");
@@ -199,8 +209,6 @@ class Users extends anyC {
 			if($U->A("allowedApplications") != null AND is_array($U->A("allowedApplications")) AND !in_array($p["anwendung"], $U->A("allowedApplications")))
 				return 0;
 
-			$UA = $U->getA();
-			
 		} catch (Exception $e){
 			if($p["loginUsername"] == "Admin" AND $p["loginSHAPassword"] == "4e7afebcfbae000b22c7c85e5560f89a2a0280b4"){#"Admin"){
 				$tu = new User(-1);
