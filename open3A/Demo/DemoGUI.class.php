@@ -25,7 +25,6 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	
 	function getHTML($id){
 		$this->loadMeOrEmpty();
-
 		/**
 		 * DEFAULT HTML TABLE
 		 */
@@ -95,13 +94,30 @@ class DemoGUI extends Demo implements iGUIHTML2 {
 	/**
 	 * returns a HTML table with all known demo-entries
 	 */
-	public static function demoPopup($find){
+	public function demoPopup($find){
 		
-		$F = new HTMLForm("FormVorlageneditor", array_merge($initFields, $fields));
-
-		echo $F;
+		$fields = array("upload");
+		
+		
+		$F = new HTMLForm("Dateiimort", $fields);		
+		$F->insertSpaceAbove("upload", "Logo");
+		$F->setType("upload", "file");
+		$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Import', '".$this->getID()."', 'processImport', [fileName], function(){ alert('Upload erfolgreich'); \$j('#Dateiimort input[name=logoFileName]').val(fileName); });");
+		
+		$F->setSaveJSON("Speichern", "", "Import", $this->getID(), "saveSub", OnEvent::closePopup("Import").OnEvent::reload("Left"));
+		
+		echo "<div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
 	}
 	
+	public function processImport($fileName){
+		$ex = explode(".", strtolower($fileName));
+	
+		$mime = null;
+	
+		if($mime == null)
+			Red::alertD("Bildtyp unbekannt. Bitte verwenden Sie jpg oder png-Dateien ohne Alphakanal.");
+	
+	}
 	
 }
 ?>
