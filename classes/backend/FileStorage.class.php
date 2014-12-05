@@ -89,7 +89,7 @@ class FileStorage {
 	}
 	
 	public static function getFilesDir(){
-		$path = realpath(Util::getRootPath())."specifics/";
+		$path = realpath(Util::getRootPath())."/specifics/";
 		
 		if(!file_exists($path.".htaccess") AND is_writable($path))
 			file_put_contents($path.".htaccess", "deny from all");
