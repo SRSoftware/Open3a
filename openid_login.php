@@ -77,6 +77,7 @@ try {
 				if($_SESSION["S"]->checkIfUserLoggedIn() == false) $_SESSION["CurrentAppPlugins"]->scanPlugins();
 
 				$U = new Users();
+				$U->doLogout();
 				$U = $U->getUserByOpenid($openid->identity);
 				if ($U != null){
 					$_SESSION["S"]->setLoggedInUser($U);
