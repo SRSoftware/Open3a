@@ -39,7 +39,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			$F->setValue($field, "");
 			$F->setType("upload", "file");
 			$F->addJSEvent("upload", "onChange", "\$j('#Dateiupload input[name=$field]').val(fileName);");
-			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::reload("Right").OnEvent::clear("Left"));
+			$F->setSaveJSON("Import starten", "", "ImportLight", $this->getID(), "processImport", OnEvent::frame("Right", 'Adressen').OnEvent::frame("Left", 'mImportLight'));
 		}
 
 		echo $F;
@@ -241,6 +241,8 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 		$type=$this->getType(reset($data));
 		$keys=null;
 		foreach ($data as $line){
+			$line=trim($line);
+			if (empty($line)) continue;
 			if ($keys == null){
 				$keys=$this->explode($separator, $line);
 				array_walk($keys, array($this,'resolve'),$type);
@@ -248,6 +250,8 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				$values=$this->explode($separator, $line);
 				if ($type == 'adresse'){
 					$object=new Adresse(-1);
+				} else {
+					return; // TODO
 				}
 				foreach ($values as $key => $value){
 					$field=$keys[$key];
@@ -276,19 +280,16 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 						$object->changeA($field, $value);
 					}
 				}
-				$id = $object->saveMe();
+				$id = $object->newMe();
 				if ($type == 'adresse'){
 					$object=new Kappendix(-1);
 					$object->changeA('AdresseID', $id);
 
 					foreach ($values as $key => $value){
-						$field=$keys[$key];
-						if (empty($value)){
-						}	elseif ($field!=null){
-							if (substr($field,0,1)=='+'){
-								$field=substr($field,1);
-								$object->changeA($field, $value);
-							}
+						$field=$keys[$key];						
+						if (!empty($value) && $field!=null && !empty($field) && substr($field,0,1)=='+'){
+							$field=substr($field,1);
+							$object->changeA($field, $value);
 						}
 					}
 					$object->newMe();
