@@ -105,25 +105,123 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 	}
 
 	public function resolve(&$name,$key,$type){
+		$name=strtolower($name);
 		if ($type == 'adresse'){
-			if ($name=='Kundennummer'){
+			if ($name=='kundennummer'){
 				$name = null;
-			} elseif ($name=='Anrede') {
-				$name='anrede';
-			} elseif ($name=='Ansprechpartner') {
+			} elseif ($name=='anrede') {
+			} elseif ($name=='ansprechpartner') {
 				$name=null;
-			} elseif ($name=='Firma') {
-				$name='firma';
-			} elseif ($name=='Matchcode') {
+			} elseif ($name=='bankbezeichnung') {
 				$name=null;
-			} elseif ($name=='Name') {
+			} elseif ($name=='bankkonto') {
+				$name=null;
+			} elseif ($name=='bankleitzahl') {
+				$name=null;
+			} elseif ($name=='bdsg datum') {
+				$name=null;
+			} elseif ($name=='bdsg herkunft kundendaten') {
+				$name=null;
+			} elseif ($name=='bdsg status') {
+				$name=null;
+			} elseif ($name=='bemerkung') {
+			} elseif ($name=='bic') {
+				$name=null;
+			} elseif ($name=='debitorenkonto') {
+				$name=null;
+			} elseif ($name=='eg id') {
+				$name=null;
+			} elseif ($name=='einzug') {
+				$name=null;
+			} elseif ($name=='email') {
+			} elseif ($name=='firma') {
+			} elseif ($name=='freifeld 1') {
+				$name=null;
+			} elseif ($name=='freifeld 2') {
+				$name=null;
+			} elseif ($name=='freifeld 3') {
+				$name=null;
+			} elseif ($name=='iban') {
+				$name=null;
+			} elseif ($name=='inaktiv') {
+				$name=null;
+			} elseif ($name=='kredit') {
+				$name=null;
+			} elseif ($name=='kreditbetrag') {
+				$name=null;
+			} elseif ($name=='land') {
+			} elseif ($name=='länderschlüssel') {
+				$name=null;
+			} elseif ($name=='länderschlüssel lieferanschrift') {
+				$name=null;
+			} elseif ($name=='lieferart') {
+				$name=null;
+			} elseif ($name=='lieferstopp') {
+				$name=null;
+			} elseif ($name=='lief-nr beim kunden') {
+				$name='lieferantennr';
+			} elseif ($name=='liefer.ansprechpartner') {
+				$name=null;
+			} elseif ($name=='liefer.land') {
+				$name=null;
+			} elseif ($name=='liefer. ort') {
+				$name=null;
+			} elseif ($name=='liefer. plz') {
+				$name=null;
+			} elseif ($name=='liefer. strasse') {
+				$name=null;
+			} elseif ($name=='liefer. telefon') {
+				$name=null;
+			} elseif ($name=='liefer. zusatz') {
+				$name=null;
+			} elseif ($name=='matchcode') {
+				$name=null;
+			} elseif ($name=='name') {
 				$name='nachname';
-				} elseif ($name=='Straße') {
+			} elseif ($name=='ort') {
+			} elseif ($name=='postleitzahl') {
+				$name='plz';
+			} elseif ($name=='preisgruppe') {
+				$name=null;
+			} elseif ($name=='rabatt') {
+				$name=null;
+			} elseif ($name=='sammelkonto') {
+				$name=null;
+			} elseif ($name=='skontotage') {
+				$name=null;
+			} elseif ($name=='skontotage-rechng') {
+				$name=null;
+			} elseif ($name=='skontobetrag-rechng') {
+				$name=null;
+			} elseif ($name=='skontobetrag') {
+				$name=null;
+			} elseif ($name=='steuerbare umsätze') {
+				$name=null;
+			} elseif ($name=='straße') {
 					$name='strasse';				
-			} elseif ($name=='Vorname') {
-				$name='vorname';
-			} elseif ($name=='Zusatz') {
+			} elseif ($name=='telefax') {
+					$name='fax';				
+			} elseif ($name=='telefon') {
+					$name='tel';				
+			} elseif ($name=='telefon 2') {
+					$name='mobil';				
+			} elseif ($name=='vorname') {
+			} elseif ($name=='währung') {
+				$name=null;
+			} elseif ($name=='zahlart') {
+				$name=null;
+			} elseif ($name=='zahlungsbedingung') {
+				$name=null;
+			} elseif ($name=='zahlungsbedingung rechnung') {
+				$name=null;
+			} elseif ($name=='zahlungsziel') {
+				$name=null;
+			} elseif ($name=='zahlungsziel-rechng') {
+				$name=null;
+			} elseif ($name=='zusatz') {
 				$name='zusatz1';
+			} elseif ($name=='§13b ustg') {
+				$name=null;
 			} else {
 				/* $name=null; /*/
 				Red::alertD($name); // */
@@ -132,7 +230,12 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 	}
 
 	public function importFrom($file){
-		$data = file($file);
+		$target_encoding='UTF-8';
+		$data = file_get_contents($file);
+		if (mb_detect_encoding($data,'UTF-8',true) === false){
+			$data = utf8_encode($data);
+		}
+		$data = explode("\n", $data);
 		$separator=$this->getSeparator(reset($data));
 		$type=$this->getType(reset($data));
 		$keys=null;
@@ -146,8 +249,32 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 					$object=new Adresse(-1);
 				}
 				foreach ($values as $key => $value){
-					if (!empty($value) && $keys[$key]!=null){
+					$field=$keys[$key];
+					if (empty($value)){						
+						if ($field=='anrede'){
+							$value=3; // keine Anrede
+							$object->changeA($field, $value);
+						}
+					}	 elseif ($field!=null){
+						if ($field == 'anrede'){
+							if (strtolower($value)=='herr'){
+								$value=2;
+							}
+							if (strtolower($value)=='frau'){
+								$value=1;
+							}
+							if (strtolower($value)=='familie'){
+								$value=4;
+							}
+							if (strtolower($value)=='firma'){
+								$value=3;
+							}
+						}
+						
+						
 						$object->changeA($keys[$key], $value);
+					} else {
+						
 					}
 					print $keys[$key].' : '.$value.PHP_EOL;
 				}
