@@ -227,6 +227,116 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				/* $name=null; /*/
 				Red::alertD("Ich habe keine Ahnung, wie das Feld $orig zuzuordnen ist!"); // */
 			}
+		} elseif ($type == 'artikel'){
+			if ($name=='artikelnummer') {
+			} elseif ($name=='bezeichnung') {
+				$name='name';
+			} elseif ($name=='b/n') {
+				$name='isBrutto';
+			} elseif ($name=='bestellte menge') {
+				$name=null;
+			} elseif ($name=='bestellmenge lf.1') {
+				$name=null;
+			} elseif ($name=='bestellmenge lf.2') {
+				$name=null;
+			} elseif ($name=='bestellnr. lf.1') {
+				$name=null;
+			} elseif ($name=='bestellnr. lf.2') {
+				$name=null;
+			} elseif ($name=='einheit') {
+				$name='gebinde';
+			} elseif ($name=='ek 1') {
+				$name='EK1';
+			} elseif ($name=='ek 2') {
+				$name='EK2';
+			} elseif ($name=='freifeld 1') {
+				$name=null;
+			} elseif ($name=='freifeld 2') {
+				$name=null;
+			} elseif ($name=='freifeld 3') {
+				$name=null;
+			} elseif ($name=='gesperrt') {
+				$name=null;
+			} elseif ($name=='gewicht') {
+				$name=null;
+			} elseif ($name=='internet') {
+				$name=null;
+			} elseif ($name=='lagerartikel') {
+				$name=null;
+			} elseif ($name=='lagerbestand') {
+				$name=null;
+			} elseif ($name=='lagerort') {
+				$name=null;
+			} elseif ($name=='lieferantennummer 1') {
+				$name=bemerkung;
+			} elseif ($name=='lieferantennummer 2') {
+				$name=null;
+			} elseif ($name=='lieferzeit lf.1') {
+				$name=null;
+			} elseif ($name=='lieferzeit lf.2') {
+				$name=null;
+			} elseif ($name=='matchcode') {
+				$name=null;
+			} elseif ($name=='mindestbestand') {
+				$name=null;
+			} elseif ($name=='staffelmenge 1') {
+				$name=null;
+			} elseif ($name=='staffelmenge 2') {
+				$name=null;
+			} elseif ($name=='staffelmenge 3') {
+				$name=null;
+			} elseif ($name=='preis pro anzahl') {
+				$name=null;
+			} elseif ($name=='preis 1') {
+				$name='preis';
+			} elseif ($name=='preis 2') {
+				$name=null;
+			} elseif ($name=='preis 3') {
+				$name=null;
+			} elseif ($name=='preis i/1') {
+				$name=null;
+			} elseif ($name=='preis i/2') {
+				$name=null;
+			} elseif ($name=='preis i/3') {
+				$name=null;
+			} elseif ($name=='preis ii/1') {
+				$name=null;
+			} elseif ($name=='preis ii/2') {
+				$name=null;
+			} elseif ($name=='preis ii/3') {
+				$name=null;
+			} elseif ($name=='preis iii/1') {
+				$name=null;
+			} elseif ($name=='preis iii/2') {
+				$name=null;
+			} elseif ($name=='preis iii/3') {
+				$name=null;
+			} elseif ($name=='sperrgrund') {
+				$name=null;
+			} elseif ($name=='stückliste') {
+				$name=null;
+			} elseif ($name=='text') {
+				$name='beschreibung';
+			} elseif ($name=='währung ek1') {
+				$name=null;
+			} elseif ($name=='währung ek2') {
+				$name=null;
+			} elseif ($name=='warengruppe') {
+				$name=null; // TODO: sollte der Kategorie zugeordnet werden
+			} elseif ($name=='warengr.-konto ausland') {
+				$name=null;
+			} elseif ($name=='warengr.-konto eg') {
+				$name=null;
+			} elseif ($name=='warengr.-konto inland') {
+				$name=null;
+			} elseif ($name=='warengr.-kurzbez.') {
+				$name=null; // TODO: sollte der Kategorie zugeordnet werden
+			} elseif ($name=='warengr.-steuersatz') {
+				$name='mwst';
+			} else {
+				/* $name=null; /*/
+				Red::alertD("Ich habe keine Ahnung, wie das Feld $name zuzuordnen ist!"); // */
+			}
 		}
 	}
 
@@ -251,7 +361,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				if ($type == 'adresse'){
 					$object=new Adresse(-1);
 				} else {
-					return; // TODO
+					$object=new Artikel(-1);
 				}
 				foreach ($values as $key => $value){
 					$field=$keys[$key];
@@ -277,16 +387,20 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 							}
 						}
 
+						if ($field == 'preis'){
+							echo "#$field#$value#\n";
+						}
+
 						$object->changeA($field, $value);
 					}
 				}
-				$id = $object->newMe();
+				$id = $object->newMe(false);
 				if ($type == 'adresse'){
 					$object=new Kappendix(-1);
 					$object->changeA('AdresseID', $id);
 
 					foreach ($values as $key => $value){
-						$field=$keys[$key];						
+						$field=$keys[$key];
 						if (!empty($value) && $field!=null && !empty($field) && substr($field,0,1)=='+'){
 							$field=substr($field,1);
 							$object->changeA($field, $value);
