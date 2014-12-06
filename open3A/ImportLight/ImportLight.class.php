@@ -17,23 +17,6 @@
  * 
  *  2007, 2008, 2009, 2010, Rainer Furtmeier - Rainer@Furtmeier.de
  */
-class mImportLightGUI extends anyC implements iGUIHTMLMP2 {
-	function  __construct() {
-		parent::__construct();
-	}
-
-	public function getHTML($id, $page){
-		$this->loadMultiPageMode($id, $page, 0);
-
-		$gui = new HTMLGUIX($this);
-		$gui->version("mImportLight");
-
-		$gui->name("Import");
-
-		$gui->attributes(array("Dateiname"));
-
-		return $gui->getBrowserHTML($id);
-
-	}
+class ImportLight extends PersistentObject {
 }
 ?>
