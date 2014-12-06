@@ -105,19 +105,18 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 	}
 
 	public function resolve(&$name,$key,$type){
+		$orig=$name;
 		$name=strtolower($name);
 		if ($type == 'adresse'){
-			if ($name=='kundennummer'){
-				$name = null;
-			} elseif ($name=='anrede') {
+			if ($name=='anrede') {
 			} elseif ($name=='ansprechpartner') {
 				$name=null;
 			} elseif ($name=='bankbezeichnung') {
 				$name=null;
 			} elseif ($name=='bankkonto') {
-				$name=null;
+				$name='+KappendixKontonummer';
 			} elseif ($name=='bankleitzahl') {
-				$name=null;
+				$name='+KappendixBLZ';
 			} elseif ($name=='bdsg datum') {
 				$name=null;
 			} elseif ($name=='bdsg herkunft kundendaten') {
@@ -126,13 +125,13 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				$name=null;
 			} elseif ($name=='bemerkung') {
 			} elseif ($name=='bic') {
-				$name=null;
+				$name='+KappendixSWIFTBIC';
 			} elseif ($name=='debitorenkonto') {
 				$name=null;
 			} elseif ($name=='eg id') {
 				$name=null;
 			} elseif ($name=='einzug') {
-				$name=null;
+				$name='+KappendixEinzugsermaechtigung';
 			} elseif ($name=='email') {
 			} elseif ($name=='firma') {
 			} elseif ($name=='freifeld 1') {
@@ -142,7 +141,9 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			} elseif ($name=='freifeld 3') {
 				$name=null;
 			} elseif ($name=='iban') {
-				$name=null;
+				$name='+KappendixIBAN';
+			} elseif ($name=='kundennummer'){
+				$name = '+kundennummer';
 			} elseif ($name=='inaktiv') {
 				$name=null;
 			} elseif ($name=='kredit') {
@@ -182,11 +183,11 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			} elseif ($name=='postleitzahl') {
 				$name='plz';
 			} elseif ($name=='preisgruppe') {
-				$name=null;
+				$name='+KappendixPreisgruppe';
 			} elseif ($name=='rabatt') {
 				$name=null;
 			} elseif ($name=='sammelkonto') {
-				$name=null;
+				$name='+KappendixSameKontoinhaber';
 			} elseif ($name=='skontotage') {
 				$name=null;
 			} elseif ($name=='skontotage-rechng') {
@@ -198,13 +199,13 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 			} elseif ($name=='steuerbare umsätze') {
 				$name=null;
 			} elseif ($name=='straße') {
-					$name='strasse';				
+				$name='strasse';
 			} elseif ($name=='telefax') {
-					$name='fax';				
+				$name='fax';
 			} elseif ($name=='telefon') {
-					$name='tel';				
+				$name='tel';
 			} elseif ($name=='telefon 2') {
-					$name='mobil';				
+				$name='mobil';
 			} elseif ($name=='vorname') {
 			} elseif ($name=='währung') {
 				$name=null;
@@ -224,7 +225,7 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				$name=null;
 			} else {
 				/* $name=null; /*/
-				Red::alertD($name); // */
+				Red::alertD("Ich habe keine Ahnung, wie das Feld $orig zuzuordnen ist!"); // */
 			}
 		}
 	}
@@ -250,12 +251,13 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 				}
 				foreach ($values as $key => $value){
 					$field=$keys[$key];
-					if (empty($value)){						
+					if (empty($value)){
 						if ($field=='anrede'){
 							$value=3; // keine Anrede
 							$object->changeA($field, $value);
 						}
-					}	 elseif ($field!=null){
+					}	elseif ($field!=null && substr($field,0,1)!='+'){
+
 						if ($field == 'anrede'){
 							if (strtolower($value)=='herr'){
 								$value=2;
@@ -270,16 +272,27 @@ class ImportLightGUI extends ImportLight implements iGUIHTML2 {
 								$value=3;
 							}
 						}
-						
-						
-						$object->changeA($keys[$key], $value);
-					} else {
-						
+
+						$object->changeA($field, $value);
 					}
-					print $keys[$key].' : '.$value.PHP_EOL;
 				}
-				print '--------------'.PHP_EOL;
-				$object->newMe();
+				$id = $object->saveMe();
+				if ($type == 'adresse'){
+					$object=new Kappendix(-1);
+					$object->changeA('AdresseID', $id);
+
+					foreach ($values as $key => $value){
+						$field=$keys[$key];
+						if (empty($value)){
+						}	elseif ($field!=null){
+							if (substr($field,0,1)=='+'){
+								$field=substr($field,1);
+								$object->changeA($field, $value);
+							}
+						}
+					}
+					$object->newMe();
+				}
 			}
 		}
 	}
