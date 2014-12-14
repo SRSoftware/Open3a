@@ -1,0 +1,18 @@
+@CHARSET "UTF-8";
+
+.openid_login{
+	padding: 15px;
+	width: 400px;
+	background-color: #28648B;
+	border-radius: 15px;
+	color: white;
+	font-weight: bold;
+	margin: auto;
+}
+
+.company{
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+	margin: 15px 0;
+}
