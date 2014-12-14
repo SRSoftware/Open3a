@@ -1,23 +1,21 @@
 <?php
 
 /**
- *  This file is part of phynx.
-
- *  phynx is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 3 of the License, or
- *  (at your option) any later version.
-
- *  phynx is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
-
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  This is an openid login addition written to complement open3a.
+ *  
+ *  Stephan Richter
+ *  
  */
+
+/* add your company website for coorporate login here: */
+
+$companies = array();
+
+$companies[] = array('ah-dienste','http://ah-dienste.de/sites/ah-dienste.de/themes/ahd/images/banner_farben.png','http://ah-dienste.de');
+$companies[] = array('Autocentrum Elliger','http://auto-elliger.de/sites/auto-elliger.de/files/logo_0.png','http://auto-elliger.de/');
+$companies[] = array('SRSoftware GbR','https://srsoftware.de/sites/srsoftware.de/files/srsoftware.de_logo.gif','http://srsoftware.de');
+$companies[] = array('UGN-Umwelttechnik GmbH','http://www.ugn-umwelttechnik.de/sites/ugn-umwelttechnik.de/themes/UGN_2014/logo.png','http://www.ugn-umwelttechnik.de');
+
 
 if(!function_exists("array_replace")){
 	require_once "./system/basics.php";
@@ -51,7 +49,6 @@ require "./system/connect.php";
 
 
 try {
-	# Change 'localhost' to your domain name.
 	$openid = new LightOpenID($_SERVER['HTTP_HOST']);
 	if(!$openid->mode) {
 		if(isset($_GET['openid'])){
@@ -62,11 +59,28 @@ try {
 			header('Location: ' . $openid->authUrl());
 		}
 		?>
-<form action="" method="post">
-	OpenID: <input type="text" name="openid" />
-	<button>Submit</button>
-</form>
+<html>
+  <head><meta charset="utf-8" />
+  <link rel="stylesheet" type="text/css" href="styles/openid_login.css"/>
+  </head>
+  <body>
+  <div class="openid_login">
+    <form action="" method="post">
+	  OpenID: <input type="text" name="openid" />
+	  <button type="submit">Login</button>
+    </form>
+
 <?php
+
+  foreach ($companies as $company){ ?>
+    <div class="company">
+      <a href="openid_login?openid=<?php echo $company[2]; ?>"><img src="<?php echo $company[1];?>" alt="<?php echo $company[0]; ?>" /></a>
+    </div>
+<?php } ?>
+  </div>
+  </body>
+</html>
+<?php 
 	} elseif($openid->mode == 'cancel') {
 				emoFatalError("Login abgebrochen", "Der Loginvorgang wurde durch den Nutzer abgebrochen!", "OpenID-Login abgebrochen!");
     } else {
