@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class KundeGUI extends Kunde implements iGUIHTML2 {
 	
@@ -64,6 +64,7 @@ class KundeGUI extends Kunde implements iGUIHTML2 {
 			
 			$mKApp = new KundenpreiseGUI();
 			$mKApp->setKundennummer($KApp->A("kundennummer"));
+			$mKApp->setAdresseID($this->ID);
 			$mKApp->setAssocV3("kundennummer","=",$KApp->A("kundennummer"));
 			#$KApp = $mKApp->getNextEntry();
 			/*if($KApp == null) {

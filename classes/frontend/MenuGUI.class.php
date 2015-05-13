@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class MenuGUI extends UnpersistentClass implements iGUIHTML2, icontextMenu {
 	function  __construct() {
@@ -163,6 +163,13 @@ class MenuGUI extends UnpersistentClass implements iGUIHTML2, icontextMenu {
 
 			$style = ((strpos($appMenuHidden, $value) !== false AND $appMenuActive) ? "style=\"display:none;\"" : "");
 
+			$BP = new Button($key, $icons[$value], "icon");
+			$BP->id($value."MenuImage");
+			if(($t == null OR $t == "big"))
+				$BP->className ("tabImg");
+			else
+				$BP->className ("smallTabImg");
+				
 			echo "
 				
 				<div
@@ -179,12 +186,12 @@ class MenuGUI extends UnpersistentClass implements iGUIHTML2, icontextMenu {
 						src=\"./images/i2/tabMinimize.png\" />-->
 					
 					<div onclick=\"$onclick\" style=\"padding:3px;padding-right:7px;padding-top:7px;height:18px;\">
-
-						<img
+						$BP
+						<!--<img
 							id=\"".$value."MenuImage\"
 							title=\"$key\"
 							".(($t == null OR $t == "big") ? "class=\"tabImg\"" : "class=\"smallTabImg\"")."
-							src=\"$icons[$value]\" />
+							src=\"$icons[$value]\" />-->
 							
 						".(($t == null OR $t == "big") ? $key : "")."
 					</div>
@@ -363,6 +370,15 @@ class MenuGUI extends UnpersistentClass implements iGUIHTML2, icontextMenu {
 		#print_r($kal);
 		#foreach($kal as $k => $v)
 		#	$kal[$k] = $k;
+		
+		$AC = anyC::get("Userdata", "typ", "loginTo");
+		$AC->addAssocV3("UserID", "=", Session::currentUser()->getID());
+		while($UD = $AC->n()){
+			if($UD->A("wert") != "0")
+				continue;
+			
+			unset($kal[str_replace("loginTo", "", $UD->A("name"))]);
+		}
 			
 		$gui = new HTMLGUI();
 		echo "<div style=\"max-height:400px;overflow:auto;\">".$gui->getContextMenu($kal, 'Menu','1',$sk,'phynxContextMenu.stop(); contentManager.switchApplication();')."</div>";

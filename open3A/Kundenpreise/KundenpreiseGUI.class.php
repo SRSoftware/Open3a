@@ -15,13 +15,22 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class KundenpreiseGUI extends Kundenpreise implements iGUIHTML2 {
 	private $kundennummer;
+	private $AdresseID;
 	
 	public function getHTML($id){
-		$this->setFieldsV3(array("name","kundenPreis","isBrutto", "artikelnummer"));
+		$fields = array("name","kundenPreis","isBrutto", "artikelnummer");
+		if(Session::isPluginLoaded("mVariante")){
+			$this->addJoinV3 ("VarianteArtikel", "KundenpreisVarianteArtikelID", "=", "VarianteArtikelID");
+			$fields[] = "KundenpreisVarianteArtikelID";
+			$fields[] = "VarianteArtikelName";
+			$fields[] = "VarianteArtikelNummer";
+		}
+		
+		$this->setFieldsV3($fields);
 
 		$gui = new HTMLGUIX($this);
 		$gui->name("Kundenpreise");
@@ -40,12 +49,13 @@ class KundenpreiseGUI extends Kundenpreise implements iGUIHTML2 {
 		
 		$gui->attributes(array("name", "artikelnummer","kundenPreis"));
 		
-		$gui->parser("name","KundenpreiseGUI::nameParser");
-		$gui->parser("kundenPreis","KundenpreiseGUI::preisParser");
+		$gui->parser("name","nameParser");
+		$gui->parser("kundenPreis","preisParser");
+		$gui->parser("artikelnummer","parserArtikelnummer");
 		
 			
 		$B = $gui->addSideButton("Kundenpreis\nhinzufügen", "package");
-		$B->select(true, "mArtikel", "Kundenpreis", "-2", "makeKundenpreis");
+		$B->select(true, "mArtikel", "Kundenpreis", $this->AdresseID, "makeKundenpreis");
 
 		
 		$Adresse = new Adresse(BPS::getProperty("KundeGUI", "AdresseID", -1));
@@ -65,19 +75,33 @@ class KundenpreiseGUI extends Kundenpreise implements iGUIHTML2 {
 
 	}	
 	
+	public static function parserArtikelnummer($w, $E){
+		if($E->A("KundenpreisVarianteArtikelID") > 0 AND $E->A("VarianteArtikelNummer") != "")
+			return $E->A("VarianteArtikelNummer");
+		
+		return $w;
+	}
+	
 	public function setKundennummer($kundennummer){
 		$this->kundennummer = $kundennummer;
 	}
 	
+	public function setAdresseID($AdresseID){
+		$this->AdresseID = $AdresseID;
+	}
+	
 	public static function preisParser($w, $E){
 		$I = new HTMLInput("kundenPreis", "text", $w);
-		$I->style("text-align:right;");
+		$I->style("text-align:right;width:100px;");
 		$I->activateMultiEdit("Kundenpreis", $E->getID());
 		
 		return $I;
 	}
 	
 	public static function nameParser($w, $E){
+		if($E->A("KundenpreisVarianteArtikelID") > 0)
+			return $E->A("VarianteArtikelName");
+		
 		return $w.($E->A("isBrutto") == "1" ? "<br /><small style=\"color:grey;\">Brutto-Artikel</small>" : "");
 	}
 	/*

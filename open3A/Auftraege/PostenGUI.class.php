@@ -15,13 +15,15 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class PostenGUI extends Posten implements iGUIHTML2 {
 	
 	function __construct($ID){
 		parent::__construct($ID);
+		
 		$this->setParser("mwst","Util::CLNumberParserZ");
+		$this->setParser("differenzbesteuertMwSt","Util::CLNumberParserZ");
 	}
 	
 	function getHTML($id){
@@ -29,7 +31,7 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		$userLabels = mUserdata::getRelabels("Artikel");
 		$userHiddenFields = mUserdata::getHides("Artikel");
 
-		$mode = $_SESSION["BPS"]->getProperty("mPostenGUI","loadGRLBMID");
+		$GRLBMID = BPS::getProperty("mPostenGUI","loadGRLBMID");
 		$this->loadMeOrEmpty();
 
 		if($this->A->isBrutto == "1")
@@ -38,9 +40,8 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		$message = "";
 		$gui = new HTMLGUIX($this);
 		if($id == -1) {
-			$this->A = $this->newAttributes();
-			$this->A->GRLBMID = $mode;
-			$G = new GRLBM($this->A->GRLBMID);
+			$G = new GRLBM($GRLBMID);
+			$this->A = $this->newAttributes($G);
 		} else {
 			$G = new GRLBM($this->A->GRLBMID);
 			if($G->A("isPayed") == "1" AND ($G->A("isR") == "1" OR $G->A("isA") == "1")){
@@ -104,7 +105,8 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		#$gui->parser("preis","PostenGUI::preisInputParser");
 		
 		$BC = new Button("Brutto- in Nettopreis umrechnen", "./images/i2/calc.png", "icon");
-		$BC->onclick("rme('Artikel','-1','calcBruttoPreis', Array(\$j('#1xPostenForm input[name=preis]').val(), \$j('#1xPostenForm input[name=mwst]').val()),'\$j(\'#1xPostenForm input[name=preis]\').val(transport.responseText);');");
+		#$BC->onclick("rme('Artikel','-1','calcBruttoPreis', Array(\$j('#1xPostenForm input[name=preis]').val(), \$j('#1xPostenForm input[name=mwst]').val()),'\$j(\'#1xPostenForm input[name=preis]\').val(transport.responseText);');");
+		$BC->contextMenu("Calculator", "#1xPostenForm input[name=preis]", "Rechner");
 		
 		$gui->addFieldButton("preis", $BC);
 		
@@ -126,10 +128,20 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 			$gui->label("isBrutto","Bruttopreis?");
 			$gui->descriptionField("isBrutto","Ist der angegebene Preis ein Bruttopreis?");
 			$gui->label("preis","Preis");
+			$gui->activateFeature("addSaveDefaultButton", $this, "isBrutto");
 		} else 
 			$gui->type("isBrutto", "hidden");
 
-		
+		if(Session::isPluginLoaded("mDifferenzbesteuerung")){
+			$gui->insertAttribute ("after", "isBrutto", "differenzbesteuert");
+			$gui->insertAttribute ("after", "differenzbesteuert", "differenzbesteuertMwSt");
+			$gui->type("differenzbesteuert","checkbox");
+			#$gui->type("mwst","hidden");
+			$gui->label("differenzbesteuert", "Differenzbesteuert");
+			$gui->label("differenzbesteuertMwSt", "Differenzbest. MwSt");
+			$gui->toggleFields("differenzbesteuert", "1", array("differenzbesteuertMwSt"), array("mwst"));
+			$gui->addFieldEvent("differenzbesteuert", "onchange", "if(this.checked) { \$j('[name=differenzbesteuertMwSt]').val(\$j('[name=mwst]').val()); \$j('[name=mwst]').val('".Util::CLNumberParserZ(0)."'); }");
+		}
 		
 		if(Session::isPluginLoaded("mexportDatev") AND mUserdata::getGlobalSettingValue("DVKappendixKundenKonto", "0"))
 			$gui->space("sachkonto");
@@ -154,6 +166,11 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		foreach($userLabels as $key => $value)
 			$gui->label($key,$value);
 			
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK")){
+			$gui->type("EK1", "hidden");
+			$gui->type("EK2", "hidden");
+		}
+		
 		#$kat = new Kategorien();
 		#$kat->addAssocV3("type","=","mwst");
 		#$mwst = array("0" => "bitte auswählen");
@@ -200,10 +217,107 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 			<input type=\"text\" value=\"$w\" id=\"preis\" style=\"width: 85%;\" name=\"preis\" onblur=\"blurMe(this);\" onfocus=\"focusMe(this);\"/>";
 	}*/
 	
-	public function saveMultiEditField($field,$value){
-		parent::saveMultiEditField($field,$value);
+	public function saveMultiEditField($field, $value){
+		parent::saveMultiEditField($field, $value);
 		#print_r($this->getA());
-		Red::messageD("Änderung gespeichert");
+		Red::messageD("Änderung gespeichert", array("bestand" => $this->messageBestand));
+	}
+	
+	public function popupOptions($ArtikelID, $GRLBMID){
+		$GRLBM = new GRLBM($GRLBMID);
+		$Artikel = new Artikel($ArtikelID);
+		
+		$B = new Button("Abbrechen", "stop");
+		$B->style("float:right;margin:5px;");
+		$B->onclick(OnEvent::closePopup("Posten"));
+		
+		$html = "<p class=\"prettyTitle\">$B".$Artikel->A("name")."</p><div style=\"clear:both;\"></div>";
+		
+		$i = 0;
+		if(Session::isPluginLoaded("mLieferant")){
+			$c = LieferantGUI::popupSelection($GRLBM, $ArtikelID);
+			if($c != "")
+				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
+			}
+		
+		if(Session::isPluginLoaded("mVariante")){
+			$c = VarianteArtikelGUI::popupSelection($GRLBM, $ArtikelID);
+			if($c != "")
+				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
+			}
+		
+		if(Session::isPluginLoaded("mSeriennummer")){
+			$c = SeriennummerGUI::popupSelection($GRLBM, $ArtikelID);
+			if($c != "")
+				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
+			}
+		
+		$aspect = Aspect::joinPoint("selections", $this, __METHOD__, array($ArtikelID, $GRLBMID), array());
+		if(is_array($aspect))
+			$html .= implode("", $aspect);
+		else
+			$html .= $aspect;
+		
+		$IAID = new HTMLInput("ArtikelID", "hidden", $ArtikelID);
+		$IGID = new HTMLInput("GRLBMID", "hidden", $GRLBMID);
+		
+		$BOK = new Button("Posten\nerstellen", "bestaetigung");
+		$BOK->style("float:right;margin:10px;");
+		$BOK->rmePCR("Posten", "-1", "popupOptionsDo", array("joinFormFields('newPostenForm')")/*array($ArtikelID, $GRLBMID, "\$j('[name=lieferantSelection]').length ? \$j('[name=lieferantSelection]:checked').val() : 0", "\$j('[name=variantSelection]').length ? \$j('[name=variantSelection]:checked').val() : 0", "\$j('[name=seriennummerSelection]').length ? \$j('[name=seriennummerSelection]').val() : ''")*/, "function(t){ Auftrag.checkBestand(t); contentManager.loadFrame('subframe', 'GRLBM', $GRLBMID); ".OnEvent::closePopup("Posten")." }");
+		echo "<form id=\"newPostenForm\">".$html.$IAID.$IGID."</form>".$BOK.OnEvent::script("\$j('#editDetailsPosten').css('width', \$j('#editDetailsPosten .sub').length * 250);");
+	}
+	
+	public function popupOptionsDo($data){
+		parse_str($data, $pdata);
+		
+		$ArtikelID = $pdata["ArtikelID"];
+		$GRLBMID = $pdata["GRLBMID"];
+		$LieferantID = null;
+		$VarianteArtikelID = 0;
+		$Seriennummern = "";
+		
+		if(isset($pdata["lieferantSelection"]))
+			$LieferantID = $pdata["lieferantSelection"];
+		
+		if(isset($pdata["variantSelection"]))
+			$VarianteArtikelID = $pdata["variantSelection"];
+		
+		if(isset($pdata["seriennummerSelection"]))
+			$Seriennummern = $pdata["seriennummerSelection"];
+		
+		$menge = 1;
+		if(Session::isPluginLoaded("mSeriennummer") AND Seriennummer::has($ArtikelID)){
+			if(trim($Seriennummern) == "")
+				Red::alertD ("Bitte tragen Sie mindestens eine Seriennummer ein");
+			
+			$S = new mSeriennummer();
+			$data = $S->checkNew("Artikel", $ArtikelID, explode("\n", trim($Seriennummern)), "sell");
+			
+			if($data[2])
+				Red::alertD($data[2]." Seriennummer".($data[2] == 1 ? "" : "n")." befinde".($data[2] == 1 ? "t" : "n")." sich nicht im Lager.");
+			
+			$menge = $data[1];
+		}
+		
+		Aspect::joinPoint("before", $this, __METHOD__, array($ArtikelID, $GRLBMID, $pdata));
+		
+		$P = new Posten(-1);
+		$P->skipVariantTest = true;
+		$P->skipLieferantTest = true;
+		$P->skipSeriennummernTest = true;
+		$PostenID = $P->newFromArtikel($ArtikelID, $GRLBMID, $menge, null, null, null, $VarianteArtikelID, $LieferantID);
+		
+		if($VarianteArtikelID != 0){
+			$V = new VarianteArtikel($VarianteArtikelID);
+			$V->fixPosten($ArtikelID, $PostenID);
+		}
+		
+		if(Session::isPluginLoaded("mSeriennummer") AND trim($Seriennummern) != "")
+			$S->doSell(explode("\n", trim($Seriennummern)), "Artikel", $ArtikelID, $GRLBMID, $PostenID);
+		
+		Aspect::joinPoint("after", $this, __METHOD__, array($ArtikelID, $GRLBMID, $PostenID, $pdata));
+		
+		Red::messageD("Posten erstellt", array("PostenID" => $PostenID, "bestand" => $P->messageBestand));
 	}
 }
 ?>

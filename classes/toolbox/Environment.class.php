@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class Environment {
@@ -75,8 +75,8 @@ class Environment {
 		return $CD;
 	}
 
-	public static function getS($value, $default){
-		Environment::load();
+	public static function getS($value, $default, $forceReload = false){
+		Environment::load($forceReload);
 		
 		$return = Environment::$currentEnvironment->get($value, $default);
 
@@ -154,8 +154,8 @@ class Environment {
 		Environment::$currentEnvironment = null;
 	}
 	
-	public static function load(){
-		if(Environment::$currentEnvironment != null) return;
+	public static function load($forceReload = false){
+		if(Environment::$currentEnvironment != null AND !$forceReload) return;
 
 		if(file_exists(Util::getRootPath()."plugins/Cloud/Cloud.class.php")/* AND !defined("PHYNX_VIA_INTERFACE")*/){ //!defined("PHYNX_VIA_INTERFACE") removed because of ZPush/lightCRM 03.07.2013
 			require_once Util::getRootPath()."plugins/Cloud/Cloud.class.php";
@@ -166,7 +166,7 @@ class Environment {
 			return;
 		}
 
-		$h = "Environment".str_replace(array(":", "-"), "_", implode("", array_map("ucfirst", explode(".", $_SERVER["HTTP_HOST"]))));
+		$h = "Environment".str_replace(array(":", "-"), "_", implode("", array_map("ucfirst", explode(".", isset($_SERVER["HTTP_HOST"]) ? $_SERVER["HTTP_HOST"] : "NonExistentABCDEF"))));
 		
 		if(defined("PHYNX_VIA_INTERFACE")){
 			if(file_exists(Util::getRootPath()."specifics/$h.class.php")){

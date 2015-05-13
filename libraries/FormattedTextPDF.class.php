@@ -15,12 +15,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
-
-#if(!class_exists("TemporaryPDFClass", false))
-#	eval("class TemporaryPDFClass extends FPDF {}");
-
 
 class FormattedTextPDF extends FPDI {
 	function __construct($orientation='P', $unit='mm', $format='A4', $unicode=true, $encoding='UTF-8', $diskcache=false, $pdfa=false){
@@ -170,13 +166,15 @@ class FormattedTextPDF extends FPDI {
 
 	private function endTag($xml){
 		if($xml->getName() == "br"){
-			$this->ln(5);
+			#print_r($this->heightStack);
+			#die($this->heightStack[count($this->heightStack) - 1] * 0.5);
+			$this->ln($this->heightStack[count($this->heightStack) - 1] * 0.5);
 			return;
 		}
 		
 		if($xml->getName() == "p"){
+			$this->ln($this->heightStack[count($this->heightStack) - 1] * 0.4);
 			array_pop($this->heightStack);
-			$this->ln(5);
 		}
 
 		if($xml->getName() == "strong")

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Kundenpreise extends anyC {
 	function __construct() {
@@ -24,12 +24,13 @@ class Kundenpreise extends anyC {
 		$this->setParser("kundenPreis","Util::CLNumberParserZ");
 	}
 
-	public static function getKundenpreisFor($ArtikelID, $kundennummer){
+	public static function getKundenpreisFor($ArtikelID, $kundennummer, $VarianteID = 0){
 		$KP = anyC::get("Kundenpreis");
 		$KP->addJoinV3("Artikel","ArtikelID","=","ArtikelID");
 		#$KP = new Kundenpreise();
 		$KP->addAssocV3("t1.kundennummer", "=", $kundennummer);
 		$KP->addAssocV3("t1.ArtikelID", "=", $ArtikelID);
+		$KP->addAssocV3("KundenpreisVarianteArtikelID", "=", $VarianteID);
 		$K = $KP->getNextEntry();
 
 		if($K == null) return null;
