@@ -15,11 +15,11 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, icontextMenu, iSearchFilter, iCategoryFilter {
 	public static $users = array("" => "unbekannt");
-	public $searchFields = array("firma","nachname","kundennummer");
+	public $searchFields = array("firma",/*"nachname",*/"kundennummer", "CONCAT(vorname, ' ', nachname)");
 	public static $BelegArten;
 	
 	function  __construct() {
@@ -45,8 +45,17 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 			
 			
 		$this->addJoinV3("Adresse","AdresseID","=","AdresseID");
-		#$this->addJoinV3("User","UserID","=","UserID");
-
+		if(Session::isPluginLoaded("mProjekt"))
+			$this->addJoinV3("Projekt", "ProjektID", "=", "ProjektID");
+		
+		if(Applications::activeApplication() == "lightCRM"){
+			$this->addAssocV3 ("status", "=", "open", "AND", "3");
+			$this->addAssocV3 ("status", "=", "confirmed", "OR", "3");
+		}
+		
+		if(Applications::activeApplication() == "upFab")
+			$this->addAssocV3 ("status", "=", "delivered", "AND", "3");
+		
 		$Users = Users::getUsers();
 		while($U = $Users->getNextEntry())
 			self::$users[$U->getID()] = $U->A("name");
@@ -89,14 +98,14 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 		$gui->tip();
 		$gui->setMultiPageMode($gesamt, $page, 0, "contentRight", str_replace("GUI","",get_class($this)));
 		
-		$gui->setName("Bitte Auftrag auswählen");
-		$gui->setCollectionOf("Auftrag","Auftrag");
+		#$gui->setName("Bitte Auftrag auswählen");
+		$gui->setCollectionOf("Auftrag", "Auftrag");
 		$gui->setShowAttributes(array("firma","bezahlt"));
 		
 
-		$gui->setParser("auftragDatum","Datum::parseGerDate");
+		#$gui->setParser("auftragDatum","Datum::parseGerDate");
 		$gui->setParser("bezahlt","AuftraegeGUI::getPaidImg", array("\$aid",(isset($pSpecData["pluginSpecificCanOnlySeeKalk"]) ? "true" : "false"),(isset($basketBPS["ids"]) ? $basketBPS["ids"] : "")));
-		$gui->setParser("firma","AuftraegeGUI::firmaParser",array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID"));
+		$gui->setParser("firma","AuftraegeGUI::firmaParser",array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID", "\$ProjektID", "\$ProjektName", "\$AuftragAdresseNiederlassungID", "\$AuftragAdresseNiederlassungData"));
 
 
 		$gui->setIsDisplayMode(true);
@@ -105,7 +114,6 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 
 
 		$tab = new HTMLSideTable("left");
-
 
 		
 		if(Applications::activeApplication() == "lightCRM"){
@@ -134,7 +142,7 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 
 			$BA1x = $tab->addButton("Auftrag mit\n1x-Adresse", "1xAddress");
 			$BA1x->className("backgroundColor0");
-			$BA1x->onclick("Auftrag.createEmpty(function(){ contentManager.loadFrame('contentRight', 'Adresse', -1, 0, 'AdresseGUI;AuftragID:'+Auftrag.newestID+';displayMode:auftragsAdresse');});");
+			$BA1x->onclick("Auftrag.createEmpty(function(){ contentManager.editInPopup('AuftragAdresse', -1, '1x-Adresse erstellen', 'AuftragAdresseGUI;AuftragID:'+Auftrag.newestID+';displayMode:auftragsAdresse');});");
 			$tab->addRowClass("backgroundColor0");
 			$tab->setRowID("Add1xAdresseButton");
 		}
@@ -315,7 +323,21 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 	
 	public static function firmaParser($w,$l,$p){
 		$s = HTMLGUI::getArrayFromParametersString($p);
-		return ($w == "" ? stripslashes($s[2]).($s[2] != "" ? " " : "").stripslashes($s[0]) : stripslashes($w)).((isset($s[3]) AND isset(self::$users[$s[3]])) ? "<br /><small style=\"color:grey;\">von ".self::$users[$s[3]]."</small>" : "");
+		
+		$name = ($w == "" ? stripslashes($s[2]).($s[2] != "" ? " " : "").stripslashes($s[0]) : stripslashes($w));
+		
+		if($s[6] > 0){
+			$data = json_decode($s[7]);
+			$name .= "<br><small style=\"color:grey;\">".$data->AdresseNiederlassungOrt."</small>";
+		}
+		
+		$name .= ((isset($s[3]) AND isset(self::$users[$s[3]])) ? "<br><small style=\"color:grey;\">von ".self::$users[$s[3]]."</small>" : "");
+		
+		
+		if($s[4] > 0)
+			$name .= "<br><small style=\"color:grey;\">$s[5]</small>";
+		
+		return $name;
 	}
 	
 	public static function parseRnr($w,$l,$p){
@@ -337,7 +359,7 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 		
 		$gui = new HTMLGUI();
 		$searchByNumber = false;
-		if($query{0} == "#" AND isset($query{1}) AND (strpos("RLKAGBW", $query[1]) !== false)){
+		if($query{0} == "#" AND isset($query{1}) AND (strpos("RLKAGBW", strtoupper($query[1])) !== false)){
 			$searchByNumber = true;
 			$isWhat = 1;
 			$query = str_replace("#","", $query);
@@ -359,6 +381,12 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 		if($query{0} == "?"){
 			$query = str_replace("?","", $query);
 			$searchByReference = true;
+		}
+		
+		$searchByProjekt = false;
+		if($query{0} == "*" AND Session::isPluginLoaded("mProjekt")){
+			$query = str_replace("*","", $query);
+			$searchByProjekt = true;
 		}
 		
 		$searchByDate = false;
@@ -400,7 +428,7 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 						if($datum != -1) $ASH->addAssocV3("datum",">=", $datum);
 						if($datum2 != -1) $ASH->addAssocV3("datum","<=", $datum2);
 						
-						$html = "<p style=\"padding:3px;\"><img src=\"./images/i2/note.png\" style=\"float:left;margin-right:3px;\" /> Es werden nur A/L/R/G/K angezeigt, die ".($datum != -1 ? "<strong>ab</strong> dem $d" : "").(($datum != -1 AND $datum2 != -1) ? " und " : "").($datum2 != -1 ? "<strong>vor</strong> dem $d2" : "")." erstellt wurden.</p>";
+						$html = "<p style=\"padding:3px;\"><img src=\"./images/i2/note.png\" style=\"float:left;margin-right:3px;\" /> Es werden nur Belege angezeigt, die ".($datum != -1 ? "<strong>ab</strong> dem $d" : "").(($datum != -1 AND $datum2 != -1) ? " und " : "").($datum2 != -1 ? "<strong>vor</strong> dem $d2" : "")." erstellt wurden.</p>";
 					}
 				}
 				
@@ -410,7 +438,6 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 					$ASH->addAssocV3("datum",">=", time() - 6 * 7 * 24 * 3600);
 				}
 				
-				
 				if($searchByNumber)
 					$ASH->addAssocV3("nummer","LIKE","%".substr($query,1)."%","AND","1");
 				
@@ -419,13 +446,19 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 					$ASH->addAssocV3("kundennummer", "LIKE", "%$query%", $k == 0 ? "AND" : "OR", "1");
 					$ASH->addGroupV3("AuftragID");
 				}
-				
+				elseif($searchByProjekt){
+					$ASH->addFieldV3("t1.ProjektID");
+					$ASH->addFieldV3("ProjektName");
+					
+					$ASH->addJoinV3("Projekt", "ProjektID", "=", "ProjektID");
+					$ASH->addAssocV3("ProjektName", "LIKE", "%$query%", "AND", "1");
+				}
 				elseif($searchByReference)
 					$ASH->addAssocV3("GRLBMReferenznummer", "=", $query, "AND", "1");
 				
-				elseif($searchByDate){
+				elseif($searchByDate)
 					$ASH->addAssocV3("t3.datum", "=", Util::CLDateParser($query, "store"), "AND", "1");
-				}
+				
 				
 				else {
 					foreach($this->searchFields AS $k => $field)
@@ -457,7 +490,7 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 				$gui->setObject($ASH);
 				$gui->setShowAttributes(array("firma","nummer"));
 				
-				$gui->setParser("firma","AuftraegeGUI::firmaParser", array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID"));
+				$gui->setParser("firma","AuftraegeGUI::firmaParser", array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID", "\$ProjektID", "\$ProjektName", "\$AuftragAdresseNiederlassungID", "\$AuftragAdresseNiederlassungData"));
 				$gui->setParser("nummer","AuftraegeGUI::nummerParser", array("\$sc->datum", "\$sc->GRLBMID"));
 				
 				$_SESSION["BPS"]->registerClass("HTMLGUI");
@@ -491,7 +524,7 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 			<input src=\"./images/i2/save.gif\" style=\"width:18px;border:0px;\" onclick=\"rme('mUserdata','','setUserdata',new Array('auftraegeMaxDate',$('auftraegeMaxDate').value),'showMessage(\'gespeichert\')');\" type=\"image\" />
 			<input src=\"./images/i2/delete.gif\" style=\"width:18px;border:0px;\" onclick=\"rme('mUserdata','','delUserdata',new Array('auftraegeMaxDate'),'showMessage(\'gelöscht\');$(\'auftraegeMaxDate\').value = \'\';');\" type=\"image\" />
 		</p>
-		<p style=\"margin-top:10px;padding:5px;\">Es werden folgende Felder durchsucht:<br /><br />Firma<br />Kundennummer<br />Nachname<br /><br />Um eine Rechnung zu finden, suchen Sie z.B. nach '#R070010'.<br />Lieferschein: '#L...',<br />Gutschein: '#G...',<br />Angebot: '#A...',<br />Bestätigung: '#B...' und<br />Kalkulation: '#K...'</p>
+		<p style=\"margin-top:10px;padding:5px;\">Es werden folgende Felder durchsucht:<br><br>Firma<br>Kundennummer<br>Vorname und Nachname<br><br>Um eine Rechnung zu finden, suchen Sie z.B. nach '#R070010'.<br />Lieferschein: '#L...',<br />Gutschein: '#G...',<br />Angebot: '#A...',<br />Bestätigung: '#B...' und<br />Kalkulation: '#K...'</p>
 		
 		<p style=\"margin-top:10px;padding:5px;\">Um nach einer Referenznummer zu suchen, beginnen Sie die Suche mit einem '?'. Also zum Beispiel '?300' findet den Beleg mit der Referenznummer 300.</p>
 
@@ -500,13 +533,13 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 	}
 	
 	public function getSearchedFields(){
-		return array("firma","vorname","nachname", "kundennummer");
+		return array("firma", "CONCAT(vorname, ' ', nachname)", "kundennummer");
 	}
 	
 	public function saveContextMenu($identifier, $key){}
 
-	public function createEmpty($addBeleg = null){
-		echo parent::createEmpty($addBeleg);
+	public function createEmpty($addBeleg = null, $AdresseID = null){
+		echo parent::createEmpty($addBeleg, $AdresseID);
 	}
 }
 ?>

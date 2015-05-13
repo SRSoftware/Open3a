@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 require "../classes/backend/BackgroundPluginState.class.php";
 require "../classes/toolbox/BPS.class.php";
@@ -29,7 +29,8 @@ if(!isset($_SESSION["BPS"]))
 $_SESSION["BPS"]->setActualClass("showPDF");
 $f = $_SESSION["BPS"]->getACProperty("filename");
 		
-if($f == "") die("No filename set!");
+if($f == "")
+	die("No filename set!");
 
 header('Content-Type: application/pdf');
 header('Content-Length: '.filesize($f));
@@ -37,7 +38,7 @@ header("Content-Disposition: inline; filename=\"".basename($f)."\"");
 
 readfile($f);
 
-if(BPS::getProperty("showPDF", "delete", true))
+if(BPS::getProperty("showPDF", "delete", true) AND strpos($f, "/tmp") !== 0)
 	unlink($f);
 
 exit();

@@ -15,9 +15,9 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
-class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable, iRepeatable, iDesktopLink {
+class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable, iRepeatable {#, iDesktopLink {
 
 	function  __construct($ID) {
 		parent::__construct($ID);
@@ -51,16 +51,21 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	}
 	// </editor-fold>
 
+	private static $lastNewAttributes = null;
 	// <editor-fold defaultstate="collapsed" desc="newWithDefaultValues">
-	function newWithDefaultValues($AdresseID = null, $status = null){
-		$this->A = $this->newAttributes();
+	function newWithDefaultValues($AdresseID = null, $status = null, Stammdaten $S = null){
+		if(self::$lastNewAttributes == null)
+			self::$lastNewAttributes = $this->newAttributes();
+		
+		$this->A = self::$lastNewAttributes;
 		$this->A->UserID = Session::currentUser()->getID();
 		$this->A->auftragDatum = time();
 		if($status != null)
 			$this->A->status = $status;
 		
 		if(Session::isPluginLoaded("mStammdaten")){
-			$S = mStammdaten::getActiveStammdaten();
+			if($S == null)
+				$S = mStammdaten::getActiveStammdaten();
 			$this->A->AuftragVorlage = $S->A("ownTemplate");
 			$this->A->AuftragStammdatenID = $S->getID();
 		}
@@ -88,13 +93,13 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		
 	}
 	
-	public static function getBelegArten($existsType = null, $addB = false){
+	public static function getBelegArten($existsType = null, $addB = false, $forApp = null){
 		$belege = array("A");
 		if($addB)
 			$belege[] = "B";
 		
 		
-		if(Applications::activeApplication() == "upFab"){
+		if(($forApp == null OR $forApp == "upFab") AND Applications::activeApplication() == "upFab"){
 			$belege = array("L");
 			
 			if($existsType != null)
@@ -103,8 +108,17 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			return $belege;
 		}
 		
+		if(($forApp == null OR $forApp == "multiPOS") AND Applications::activeApplication() == "multiPOS"){
+			$belege = array("C");
+			
+			if($existsType != null)
+				return array_search($existsType, $belege) !== false;
 		
-		if(Applications::activeApplication() == "lightCRM"){
+			return $belege;
+		}
+		
+		
+		if(($forApp == null OR $forApp == "lightCRM") AND Applications::activeApplication() == "lightCRM"){
 			if($existsType != null)
 				return array_search($existsType, $belege) !== false;
 		
@@ -478,6 +492,7 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			$mKApp = new mKappendix();
 			$mKApp->setAssocV3("AdresseID","=",$AdresseID);
 			$KApp = $mKApp->getNextEntry();
+			
 			if($KApp != null) {
 				$this->forceReload();
 				$this->A->kundennummer = $KApp->A("kundennummer");
@@ -516,7 +531,7 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 	private static $reNrTemplate = null;
 	// <editor-fold defaultstate="collapsed" desc="createGRLBM">
-	public function createGRLBM($belegart, $returnID = false, $belegNummer = false, $referenz = "", $datum = null){
+	public function createGRLBM($belegart, $returnID = false, $belegNummer = false, $referenz = "", $datum = null, $additional = array()){
 		$type = $belegart;
 
 		$this->loadMe();
@@ -552,9 +567,15 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		$GA->lieferDatum = Util::CLDateParser($datum);#date("d.m.Y");
 		$GA->GRLBMpayedVia = "transfer";
 		$GA->GRLBMReferenz = $referenz;
+		$GA->GRLBMSEPAMode = "OOFF";
 		
 		$GA->prefix = mStammdaten::getActiveStammdaten()->getPrefix($type);
 
+		if(Session::currentUser() != null){
+			$GA->GRLBMCreatedByUsername = Session::currentUser()->A("name");
+			$GA->GRLBMCreatedByUserID = Session::currentUser()->getID();
+		}
+		
 		if(Session::isPluginLoaded("Kunden"))
 			$KA = Kappendix::getKappendixToKundennummer($this->A("kundennummer"));
 		else
@@ -615,8 +636,11 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 				$GA->zahlungsziel = (time() + 14 * 3600 * 24);
 		}
 		
-		if(Session::isPluginLoaded("mZahlungsart")){
+		if(Session::isPluginLoaded("mZahlungsart") AND $type == "R"){
 			$ZAD = Zahlungsart::getDefault();
+			if($KA != null AND $KA->A("KappendixRZahlungsart") != "")
+				$ZAD = $KA->A("KappendixRZahlungsart");
+			
 			if($ZAD != ""){
 				$GA->GRLBMpayedVia = $ZAD;
 				$TBD = Zahlungsart::getTB($ZAD);
@@ -640,6 +664,9 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			
 			$GA->GRLBMWaehrungFaktor = $Sprache->A("SpracheWaehrungFaktor");
 		}
+		
+		foreach($additional AS $k => $v)
+			$GA->$k = $v;
 		
 		$G->setA($GA);
 		
@@ -728,9 +755,10 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	// <editor-fold defaultstate="collapsed" desc="sendViaEmail">
 	function sendViaEmail($GRLBMID, $Recipient = "", $Subject = "", $Body = "", $die = true){
 		$G = new GRLBM($GRLBMID);
-		$brief = $this->getLetter("", false, $GRLBMID);
 		
+		$brief = $this->getLetter("", false, $GRLBMID);
 		$filename = $brief->generate(true);
+		
 		$Stammdaten = mStammdaten::getActiveStammdaten();
 		$AnAdresse = new Adresse($this->A("AdresseID"));
 
@@ -742,6 +770,7 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		if($Subject == "") $Subject = $OSubject;
 		if($Body == "") $Body = $OBody;
 
+		
 		list($fromName, $from) = AuftragGUI::getEMailSender($Stammdaten, $die);
 		
 		try {
@@ -751,6 +780,12 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			if($die) Red::errorD($e->getMessage());
 			else throw new Exception("E-Mail: ".$e->getMessage());
 		}
+		
+		$images = tinyMCEGUI::findImages($Body);
+		$Body = tinyMCEGUI::fixImages($Body);
+		
+		foreach($images AS $image)
+			$mail->addEmbeddedImage(new fileEmbeddedImage($image, "image/jpg"));
 		
 		if(mUserdata::getUDValueS("sendBelegViaEmailDSN", "false") == "true")
 			$mail->setDSN(true, true, true);
@@ -770,6 +805,21 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	    		new Base64Encoding())
 	    );
 
+		$filenameInvoice = null;
+		if($G->getMyPrefix() == "M" AND mUserdata::getUDValueS("sendBelegViaEmailAttachInvoice", "false") == "true"){
+			$GRLBMOrig = new GRLBM($G->A("AuftragID"));
+			$AuftragOrig = new Auftrag($GRLBMOrig->A("AuftragID"));
+			
+			$briefInvoice = $AuftragOrig->getLetter("", true, $GRLBMOrig->getID());
+			$filenameInvoice = $briefInvoice->generate(true);
+		
+			$mail->addAttachment(
+				new fileAttachment(
+					$filenameInvoice,
+					'application/pdf',
+					new Base64Encoding())
+			);
+		}
 		
 		#$ud = new mUserdata();
     	if(Session::isPluginLoaded("mFile") AND mUserdata::getUDValueS("sendBelegViaEmailAttachments", "false") == "true"){
@@ -792,6 +842,10 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			}
     	}
 
+		if(Session::isPluginLoaded("mMicropayment"))
+			$Body = Micropayment::attach($mail, $Body);
+		
+		
 	    if(strpos($Body, "<p") !== false AND strpos($Body, "</p>") !== false) {
 			$mail->setHTML(Util::makeHTMLMail($Body));
 			$mail->setHTMLCharset("UTF-8");
@@ -811,9 +865,12 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		$G->changeA("isEMailedTime", time());
 		$G->saveMe(true, false, true);
 		
+		if($filenameInvoice)
+			unlink($filenameInvoice);
 		unlink($filename);
 
-		if($die) echo "message:AuftraegeMessages.M001";
+		if($die)
+			echo "message:AuftraegeMessages.M001";
 
 		return true;
 	}
@@ -833,18 +890,31 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 	// <editor-fold defaultstate="collapsed" desc="saveMultiEditField">
 	protected function saveMultiEditField($field,$value){
-		if($this->A == null) $this->loadMe();
+		if($this->A == null)
+			$this->loadMe();
+		
 		$this->A->$field = $value;
+		
+		if($field == "AuftragAdresseNiederlassungID" AND $value > 0){
+			$AN = new AdresseNiederlassung($value);
+			
+			$this->changeA("AuftragAdresseNiederlassungData", $AN->getJSON());
+		}
+		
+		if($field == "AuftragAdresseNiederlassungID" AND $value == 0)
+			$this->changeA("AuftragAdresseNiederlassungData", "");
+		
+		
 		$this->saveMe();
 	}
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="getDesktopLink">
-	public function getDesktopLink(){
+	/*public function getDesktopLink(){
 		$Adresse = new Adresse($this->A("AdresseID"));
 
 		return array("edit",$Adresse->A("firma") == "" ? $Adresse->A("vorname")." ".$Adresse->A("nachname") : $Adresse->A("firma"));
-	}
+	}*/
 	// </editor-fold>
 }
 ?>

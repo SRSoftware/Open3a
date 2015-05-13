@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class nicEditGUI {
 	public function editInPopup($formID, $fieldName, $variablesCallback = null){
@@ -53,7 +53,11 @@ setTimeout(function(){
 	}
 	
 	public function openInPopup($className, $classID, $fieldName){
-		$C = new $className($classID);
+		$T = new tinyMCEGUI();
+		return $T->openInPopup($className, $classID, $fieldName);
+		
+		
+		/*$C = new $className($classID);
 		
 		$ITA = new HTMLInput("nicEditor", "textarea");
 		$ITA->id("nicEditor");
@@ -78,7 +82,7 @@ setTimeout(function(){
 
 			".OnEvent::closePopup("nicEdit")."
 		}
-	}).panelInstance('nicEditor');}, 100);");
+	}).panelInstance('nicEditor');}, 100);");*/
 	}
 }#nicEditors.findEditor('nicEditor').nicCommand('insertHTML', 'test' );
 ?>

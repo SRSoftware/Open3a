@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class FileStorage {
 	protected $instance;
@@ -89,7 +89,7 @@ class FileStorage {
 	}
 	
 	public static function getFilesDir(){
-		$path = realpath(Util::getRootPath()."specifics")."/";
+		$path = realpath(Util::getRootPath())."/specifics/";
 		
 		if(!file_exists($path.".htaccess") AND is_writable($path))
 			file_put_contents($path.".htaccess", "deny from all");

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 var AuftraegeMessages = {
@@ -59,11 +59,18 @@ var Auftrag = {
 	newestGRLBMID: null,
 	currentSection: null,
 	
+	checkBestand: function(t){
+		if(t.responseData.bestand && t.responseData.bestand != "")
+			Popup.load("Bestandsprüfung", "mArtikel", -1, "checkBestand", t.responseData.bestand);
+	},
+	
 	addArtikel: function(grlbmID, artikelID, onSuccessFunction){
 		var arg = arguments;
 		
-		contentManager.rmePCR("GRLBM", grlbmID, "getPostenCopy", [artikelID], function() {
+		contentManager.rmePCR("GRLBM", grlbmID, "getPostenCopy", [artikelID], function(t) {
 			Auftrag.reloadBeleg(grlbmID, onSuccessFunction);
+			
+			Auftrag.checkBestand(t);
 		});
 	},
 
@@ -142,11 +149,14 @@ var Auftrag = {
 		contentManager.loadFrame('contentRight','Adressen', -1, 0,'AdressenGUI;selectionMode:singleSelection,Auftrag,'+Auftrag.newestID+',getAdresseCopy,Auftraege,contentLeft,Auftrag,'+Auftrag.newestID+'', onSuccessFunction);
 	},
 
-	createEmpty: function(onSuccessFunction, addBeleg){
+	createEmpty: function(onSuccessFunction, addBeleg, AdresseID){
 		if(typeof addBeleg == "undefined")
 			addBeleg = "";
 		
-		contentManager.rmePCR("Auftraege", "-1", "createEmpty", addBeleg, function(transport){
+		if(typeof AdresseID == "undefined")
+			AdresseID = "";
+		
+		contentManager.rmePCR("Auftraege", "-1", "createEmpty", [addBeleg, AdresseID], function(transport){
 			Auftrag.newestID = transport.responseText; 
 			
 			if(typeof onSuccessFunction == "function")

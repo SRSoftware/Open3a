@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class ADesktopGUI extends UnpersistentClass implements iGUIHTML2 {
 	function  __construct() {
@@ -64,7 +64,7 @@ class ADesktopGUI extends UnpersistentClass implements iGUIHTML2 {
 		
 		
 		if($data === false)
-			return "$html<p style=\"color:grey;\">Blog nicht erreichbar.</p>";
+			return "$html<p style=\"color:grey;\">Blog nicht erreichbar. ☹</p>";
 		
 		try {
 			$XML = new SimpleXMLElement($data);

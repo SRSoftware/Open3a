@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class TextbausteinGUI extends Textbaustein implements iGUIHTML2/*, iFPDF */{
 	function getHTML($id){
@@ -78,51 +78,20 @@ class TextbausteinGUI extends Textbaustein implements iGUIHTML2/*, iFPDF */{
 			
 		Registry::reset("Textbausteine");
 		
-		
 		$gui->descriptionField("isKatDefault","Soll dieser Textbaustein als Standard beim Typ '<span style=\"font-weight:bold;\" id=\"TBType\">".$typ."</span>' verwendet werden?");
 		
 		$gui->label("label","Name");
 		$gui->label("text","Text");
 		$gui->label("betreff","Betreff");
 		
-		$gui->type("text","nicEdit", array("Textbaustein.updateTBVariables"));
+		$gui->type("text","tinyMCE", array("Textbaustein.updateTBVariables", strpos(self::parserKID($this->A("KategorieID")), "E-Mail") === 0 ? "Textbausteine" : null));
 		$gui->type("betreff","textarea");
 		
-		$options = array("0" => "bitte auswählen...");
-		foreach($_SESSION["TBKategorien"] AS $k => $v)
-			$options[$k] = $v;
-
-		while($R = Registry::callNext("Textbausteine"))
-			$options[$R[0]] = $R[1];
-			
-		$gui->type("KategorieID","select", $options);
+		$gui->parser("KategorieID", "parserKID");
 		$gui->label("KategorieID","Typ");
 
-		$gui->addFieldEvent("KategorieID","onChange","Textbaustein.katChange(['".implode("','", $BelegArten)."']);");
+		#$gui->addFieldEvent("KategorieID","onChange","Textbaustein.katChange(['".implode("','", $BelegArten)."']);");
 
-		/*if($this->A("KategorieID") == 31 OR $this->A("KategorieID") == 32 OR $this->A("KategorieID") == 33 OR $this->A("KategorieID") > 100){
-			foreach($BelegArten AS $B)
-				$gui->hideLine ("is".$B."Standard");
-
-			$gui->hideLine("isMStandard");
-		}
-		if($this->A("KategorieID") == 1 OR $this->A("KategorieID") == 2 OR $this->A("KategorieID") == 3 OR $this->A("KategorieID") == 41 OR $this->A("KategorieID") == 42){
-			$gui->hideLine("isKatDefault");
-			if($this->A("KategorieID") != 41 AND $this->A("KategorieID") != 42)
-				$gui->hideLine("isMStandard");
-			
-		}
-		if($this->A("KategorieID") == 0){
-			foreach($BelegArten AS $B)
-				$gui->hideLine("is".$B."Standard");
-
-			$gui->hideLine("isMStandard");
-			
-			$gui->hideLine("isKatDefault");
-		}
-		
-		if($this->A("KategorieID") < 100 AND $this->A("KategorieID") != 42)
-			$gui->hideLine("betreff");*/
 		
 		$f = array("KategorieID", "label", "betreff", "text");
 
@@ -136,21 +105,17 @@ class TextbausteinGUI extends Textbaustein implements iGUIHTML2/*, iFPDF */{
 
 		$gui->attributes($f);
 
-		$html = "";/*
-			<div 
-				style=\"position:absolute;z-index:2000;margin-left:450px;width:200px;border-width:1px;border-style:solid;".(isset($_SESSION["TBVariables"][$this->A->KategorieID]) ? "" : "display:none;")."\"
-				class=\"backgroundColor0 borderColor1\"
-				id=\"TBVarsContainer\">
-			<div class=\"cMHeader backgroundColor1\" id=\"TBVarsHandler\">Variablen:</div>
-			<div>
-				<p><small>Sie können folgende Variablen in Ihrem Text verwenden (bitte beachen Sie Groß- und Kleinschreibung):</small></p>
-				<p id=\"TBVars\">".(isset($_SESSION["TBVariables"][$this->A->KategorieID]) ? "{".implode("}<br />{",$_SESSION["TBVariables"][$this->A->KategorieID])."}" : "")."</p>
-			</div>
-			</div><script type=\"text/javascript\">new Draggable('TBVarsContainer',{handle:'TBVarsHandler', zindex: 2000});</script>";*/
-		
 		$gui->customize($this->customizer);
 
-		return $html.$gui->getEditHTML().OnEvent::script("Textbaustein.katChange(['".implode("','", $BelegArten)."']);");
+		return $gui->getEditHTML().OnEvent::script("Textbaustein.katChange(['".implode("','", $BelegArten)."']);");
+	}
+	
+	public static function parserKID($w){
+		$I = new HTMLInput("KategorieID", "hidden", $w);
+		
+		$t = self::types();
+		
+		return $t[$w].$I;
 	}
 }
 ?>

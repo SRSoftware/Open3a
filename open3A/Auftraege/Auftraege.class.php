@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Auftraege extends anyC implements iPluginSpecificRestrictions {
 	function __construct() {
@@ -35,9 +35,9 @@ class Auftraege extends anyC implements iPluginSpecificRestrictions {
 		return $a;
 	}
 
-	public function createEmpty($addBeleg = null){
+	public function createEmpty($addBeleg = null, $AdresseID = null){
 		$A = new Auftrag(-1);
-		$id = $A->newWithDefaultValues();
+		$id = $A->newWithDefaultValues($AdresseID);
 		
 		if($addBeleg){
 			$A = new Auftrag($id);
@@ -85,7 +85,7 @@ class Auftraege extends anyC implements iPluginSpecificRestrictions {
 			$B = new Button("Original", "pdf", "icon");
 			$B->windowRme("Auftrag", $D->A("AuftragID"), "getGRLBMPDF", array("'false'", "''", $D->getID()), "_Brief;templateType:PDF");
 
-			$Tab->addHistorie(Stammdaten::getLongType($D->getMyPrefix())." ".$D->A("prefix").$D->A("nummer"), Stammdaten::getIconType($D->getMyPrefix()), $D->A("datum"), "Bruttobetrag: ".Util::CLFormatCurrency($D->A("bruttobetrag") * 1, true), $B, "");
+			$Tab->addHistorie(Stammdaten::getLongType($D->getMyPrefix())." ".$D->A("prefix").$D->A("nummer"), Stammdaten::getIconType($D->getMyPrefix()), $D->A("datum"), "Bruttobetrag: ".Util::CLFormatCurrency($D->A("bruttobetrag") * 1, true), $B, "", $D->A("GRLBMCreatedByUserID"));
 			
 			if($D->A("isPayed") == "1" AND $D->A("GRLBMpayedDate") > 0)
 				$Tab->addHistorie("Zahlungseingang", "./lightCRM/Historie/Zahlungseingang.png", $D->A("GRLBMpayedDate"), Stammdaten::getLongType($D->getMyPrefix())." ".$D->A("prefix").$D->A("nummer"), $B, "nach ".floor(($D->A("GRLBMpayedDate") - $D->A("datum")) / (3600 * 24))." Tagen");

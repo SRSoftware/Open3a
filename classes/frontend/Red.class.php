@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Red {
 
@@ -30,8 +30,11 @@ class Red {
 		die("redirect:$JSFunction");
 	}
 	
-	public static function errorD($message){
-		die("error:'".addslashes($message)."'");
+	public static function errorD($message, $exception = false){
+		if(!$exception)
+			die("error:'".addslashes($message)."'");
+		else 
+			throw new Exception ($message);
 	}
 
 	public static function errorC($class, $message){
@@ -63,15 +66,26 @@ class Red {
 				$value[$k] = $v;
 			
 			if(defined("JSON_UNESCAPED_UNICODE"))
-				$flags = JSON_UNESCAPED_UNICODE;
-			
-			die(json_encode($value, $flags = 0));
+				die(json_encode($value, JSON_UNESCAPED_UNICODE));
+
+			die(json_encode($value));
 		}
 		
 		die("message:'".addslashes($message)."'");
 	}
 	
-	public static function messageSaved(){
+	public static function messageSaved(array $data = null){
+		if($data != null){
+			$value = array("type" => "message", "message" => "Daten gespeichert");
+			foreach($data AS $k => $v)
+				$value[$k] = $v;
+			
+			if(defined("JSON_UNESCAPED_UNICODE"))
+				die(json_encode($value, JSON_UNESCAPED_UNICODE));
+
+			die(json_encode($value));
+		}
+		
 		die("message:'Daten gespeichert'");
 	}
 	

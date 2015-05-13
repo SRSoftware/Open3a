@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class Artikel_en_US implements iTranslation {
@@ -61,8 +61,8 @@ class Artikel_en_US implements iTranslation {
 		"Stück plural" => "pieces",
 		"kein Lieferant" => "no distributor",
 		"Lieferant" => "distributor",
-		"Lieferanten" => "distributors",
-		"Rechner" => "calculate net price from gross price");
+		"Lieferanten" => "distributors"/*,
+		"Rechner" => "calculate net price from gross price"*/);
 	}
 
 	public function getSingular(){

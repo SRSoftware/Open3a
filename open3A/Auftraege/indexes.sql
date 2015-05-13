@@ -1,0 +1,2 @@
+
+ALTER TABLE `Posten` ADD INDEX ( `GRLBMID` ) 

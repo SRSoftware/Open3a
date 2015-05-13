@@ -15,41 +15,64 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class mStammdatenGUI extends mStammdaten implements iGUIHTML2 {
 	public function getHTML($id){
-		$gui = new HTMLGUI();
-		$gui->VersionCheck("mStammdaten");
+		$this->addAssocV3("isDeleted", "=", "0");
+		$this->lCV3($id); //required later!
 
-		#if($query != "") $this->makeSearch($query);
-		if($this->A == null) $this->lCV3($id);
+		$gui = new HTMLGUIX($this);
+		$gui->version("mStammdaten");
+		$gui->name("Stammdaten");
 		
-		$gui->setName("Stammdaten");
-		if($this->collector != null) $gui->setAttributes($this->collector);
+		$gui->attributes(array("aktiv", "firmaKurz"));
+		$gui->colWidth("aktiv", 20);
 		
-		$gui->setCollectionOf($this->collectionOf);
-		$gui->setShowAttributes(array("aktiv","firmaKurz"));
-		$gui->setParser("aktiv","mStammdatenGUI::aktivParser",array("\$aid"));
-		$gui->setColWidth("aktiv","20px");
+		$gui->parser("aktiv","mStammdatenGUI::aktivParser");#, array("\$aid"));
+		$gui->parser("firmaKurz","mStammdatenGUI::firmaParser");#, array("\$sc->vorname","\$sc->nachname","\$aid")); # only works because \$sc->vorname is eval'd while $sc is set in HTMLGUI.class.php
 		
-		$gui->setParser("firmaKurz","mStammdatenGUI::firmaParser",array("\$sc->vorname","\$sc->nachname","\$aid")); # only works because \$sc->vorname is eval'd while $sc is set in HTMLGUI.class.php
+		#$gui->bla
 		
 		if(Session::isPluginLoaded("Auftraege") AND $this->numLoaded() > 1){
 			$AC = anyC::get("Auftrag", "AuftragStammdatenID", "0");
 			$AC->setLimitV3(1);
 			$AC->lCV3();
 
-			$ST = new HTMLSideTable("left");
-			if($AC->numLoaded() > 0){
-				$B = $ST->addButton("Stammdaten-\nzuweisung", "./images/navi/edit.png");
+			$showZuweisung = false;
+			if($AC->numLoaded() > 0)
+				$showZuweisung = true;
+			
+			
+			
+			if(count($this->findMissingStammdaten()))
+				$showZuweisung = true;
+			
+			if($showZuweisung){
+				$B = $gui->addSideButton("Stammdaten-\nzuweisung", "./images/navi/edit.png");
 				$B->popup("", "Stammdatenzuweisung", "mStammdaten", "-1", "stammdantenzuweisungPopup", "", "", "{width:800, top:20}");
 			}
 		}
 		
-		try {
-			return ($id == -1 ? $ST : "").$gui->getBrowserHTML($id);
-		} catch (Exception $e){ }
+		
+		return $gui->getBrowserHTML($id);
+	}
+	
+	private function findMissingStammdaten(){
+		$missing = array();
+		$AC = anyC::get("Auftrag");
+		$AC->addAssocV3("AuftragStammdatenID", "!=", "0");
+		$AC->addGroupV3("AuftragStammdatenID");
+		$AC->setFieldsV3(array("AuftragStammdatenID"));
+		while($S = $AC->n()){
+
+			$ACS = anyC::getFirst("Stammdaten", "StammdatenID", $S->A("AuftragStammdatenID"));
+			if($ACS == null)
+				$missing[] = $S->A("AuftragStammdatenID");
+
+		}
+		
+		return $missing;
 	}
 	
 	private static $start;
@@ -60,7 +83,7 @@ class mStammdatenGUI extends mStammdaten implements iGUIHTML2 {
 		$done = mUserdata::getUDValueS("stammAuftragDone", 0);
 		
 		echo "<div style=\"display:inline-block;width:400px;vertical-align:top;\">";
-		echo "<p>In Ihrem System befinden sich Aufträge ohne zugewiesene Stammdaten. Dies ist in der Regel kein Problem, da automatisch die aktiven Stammdaten verwendet werden.</p>";
+		echo "<p>In Ihrem System befinden sich Aufträge ohne zugewiesene oder mit nicht mehr existierenden Stammdaten. Dies ist in der Regel kein Problem, da automatisch die aktiven Stammdaten verwendet werden.</p>";
 		echo "<p>Sie benötigen diese Zuweisung, wenn sich die Stammdaten ändern und Aufträge bis zu einem bestimmten Datum weiterhin die bisherigen Stammdaten verwenden sollen.</p>";
 		
 		if($done > 0)
@@ -101,6 +124,8 @@ class mStammdatenGUI extends mStammdaten implements iGUIHTML2 {
 		$AC->addOrderV3("auftragDatum");
 		$AC->addOrderV3("t1.AuftragID");
 		$AC->addJoinV3("Adresse", "AdresseID", "=", "AdresseID");
+		foreach($this->findMissingStammdaten() AS $SID)
+			$AC->addAssocV3 ("AuftragStammdatenID", "=", $SID, "OR");
 		
 		$AC->loadMultiPageMode(-1, $page, 10);
 
@@ -194,13 +219,24 @@ class mStammdatenGUI extends mStammdaten implements iGUIHTML2 {
 			mUserdata::setUserdataS("stammAuftragEnde", $AuftragID);
 	}
 	
-	public static function firmaParser($w, $a, $p){
-		$s = HTMLGUI::getArrayFromParametersString($p);
+	public static function firmaParser($w, $E){
+		#array("\$sc->vorname","\$sc->nachname","\$aid")
+		#$s = HTMLGUI::getArrayFromParametersString($p);
+		$s[0] = $E->A("vorname");
+		$s[1] = $E->A("nachname");
+		$s[2] = $E->getID();
+		
 		return ($w != "" ? "<img style=\"float:right;\" title=\"leeren Brief anzeigen\" src=\"./images/i2/pdf.gif\" onclick=\"document.open('./interface/rme.php?bps=mGRLBMGUI;type:R&class=Stammdaten&amp;constructor=$s[2]&amp;method=getLetter&amp;parameters=','Druckansicht','height=650,width=875,left=20,top=20');\" />".$w : "<img style=\"float:right;\" title=\"leeren Brief anzeigen\" src=\"./images/i2/pdf.gif\" onclick=\"document.open('./interface/rme.php?class=Stammdaten&amp;constructor=$s[2]&amp;method=getLetter&amp;parameters=','Druckansicht','height=650,width=875,left=20,top=20');\" />".$s[0]." ".$s[1]);
 	}
 	
-	public static function aktivParser($w, $a, $p){
-		return $w == 1 ? "<img src=\"./images/i2/ok.gif\" title=\"Stammdaten aktiv\" />" : "<img src=\"./images/i2/notok.gif\" title=\"Stammdaten aktivieren\" onclick=\"rme('mStammdaten','','activate','$p','contentManager.reloadFrameRight();');\" class=\"mouseoverFade\" />";
+	public static function aktivParser($w, $E){
+		$B = new Button("Stammdaten aktiv", "/images/i2/ok.gif", "icon");
+		
+		if(!$w){
+			$B = new Button("Stammdaten aktivieren", "./images/i2/notok.gif", "icon");
+			$B->rmePCR("mStammdaten", "-1", "activate", $E->getID(), OnEvent::reload("Right"));
+		}
+		return $B;#$w == 1 ? "<img src=\"./images/i2/ok.gif\" title=\"Stammdaten aktiv\" />" : "<img src=\"./images/i2/notok.gif\" title=\"Stammdaten aktivieren\" onclick=\"rme('mStammdaten','','activate','".$E->getID()."','contentManager.reloadFrameRight();');\" class=\"mouseoverFade\" />";
 	}
 }
 ?>

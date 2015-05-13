@@ -15,12 +15,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class exportArtikelGUI extends exportDefault implements iExport, iGUIHTML2 {
 
 	#private $Kategorien = array();
-
+	
 	public function getLabel(){
 		return "Artikel";
 	}
@@ -52,19 +52,23 @@ class exportArtikelGUI extends exportDefault implements iExport, iGUIHTML2 {
 			"mwst AS MwSt",
 			"beschreibung AS Beschreibung",
 			"bemerkung AS Bemerkung"));
-
+		
 		return $ac;
 	}
 
 	protected function entryParser(PersistentObject $entry){
-
 		#$entry->changeA("Anrede", Util::formatAnrede("de_DE", $entry, true));
 
 		#if(isset($this->Kategorien[$entry->A("Kategorie")]))
 		#	$entry->changeA("Kategorie", $this->Kategorien[$entry->A("Kategorie")]);
 		#else $entry->changeA("Kategorie", "");
-
+		
 		$A = $entry->getA();
+		$entry->changeA("Preis", Util::CLNumberParserZ($entry->A("Preis")));
+		$entry->changeA("EK1", Util::CLNumberParserZ($entry->A("EK1")));
+		$entry->changeA("EK2", Util::CLNumberParserZ($entry->A("EK2")));
+		$entry->changeA("MwSt", Util::CLNumberParserZ($entry->A("MwSt")));
+		
 		#unset($A->AdresseID);
 		unset($A->ArtikelID);
 	}

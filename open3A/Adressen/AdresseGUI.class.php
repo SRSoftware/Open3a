@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 	
@@ -25,31 +25,19 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 		parent::__construct($ID);
 
 		$this->gui = new HTMLGUI2();
-		#$this->setParser("geb", "Util::CLDateParserE");
 	}
 	
 	function getHTML($id){
 		$forReload = "";
-		$displayMode = null;
-		$AuftragID = -1;
 		
-		$bps = $this->getMyBPSData();
-		if($bps != -1 AND isset($bps["AuftragID"]))
-			$AuftragID = $bps["AuftragID"];
-
-		if($bps != -1 AND isset($bps["displayMode"]))
-			$displayMode = $bps["displayMode"];
-
-		$_SESSION["BPS"]->unsetACProperty("AuftragID");
-		$_SESSION["BPS"]->unsetACProperty("displayMode");
+		BPS::unsetProperty("AdresseGUI", "AuftragID");
+		BPS::unsetProperty("AdresseGUI", "displayMode");
 		
-		#if($this->A == null AND $id != -1) $this->loadMe();
+		
 		$this->loadMeOrEmpty();
 		
 		if($id * 1 == -1) {
 			$this->A = $this->newAttributes();
-			$this->A->AuftragID = $AuftragID;
-			if($displayMode != null) $this->A->type = $displayMode; //Has to stay or lieferAdresse will also overwrite a normal Auftrags-Adresse
 
 			if(Session::isPluginLoaded("mAdressBuch")){
 				$AB = BPS::getProperty("AdressenGUI", "AdressBuch", null);
@@ -62,8 +50,8 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 
 			try {
 				$K = new Kunden();
-				if($displayMode == null AND $this->A("type") == "default") //Or else a lieferAdresse will get a Kundennummer
-					$K->createKundeToAdresse($id,false);
+				#if($this->A("type") == "default") //Or else a lieferAdresse will get a Kundennummer
+				$K->createKundeToAdresse($id,false);
 			} catch(ClassNotFoundException $e) {}
 
 			$forReload = "<script type=\"text/javascript\">lastLoadedLeft = $id; lastLoadedLeftPlugin = 'Adresse';</script>";
@@ -72,25 +60,45 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 		
 		$OptTab = new HTMLSideTable("right");
 		
-		if($this->A("foto") != ""){
-			$Image = new Button("", DBImageGUI::imageLink("Adresse", $this->getID(), "foto", false, true), "icon");
-			$Image->style("max-width:150px;");
-			$OptTab->addRow(array($Image));
-		}
 		
-		if(Session::isPluginLoaded("Kunden") AND $this->A->AuftragID == -1){
+		/*$IIL = new HTMLInput("uploadLogo", "file");
+		$IIL->onchange(OnEvent::rme($this, "processUpload", array("fileName", "'logo'"), OnEvent::rme($this, "getPic", array("'logo'", "1"), "function(t){ \$j('#picLogo').html(t.responseText); }")));
+		
+		$IIF = new HTMLInput("uploadFoto", "file");
+		$IIF->onchange(OnEvent::rme($this, "processUpload", array("fileName", "'foto'"), OnEvent::rme($this, "getPic", array("'foto'", "1"), "function(t){ \$j('#picFoto').html(t.responseText); }")));
+		
+		
+		$BL = new Button("Logo hochladen", "upload", "iconicG");
+		$BL->onclick("\$j('#uploadLogo').toggle();");
+		
+		$BF = new Button("Foto hochladen", "upload", "iconicG");
+		$BF->onclick("\$j('#uploadFoto').toggle();");
+		
+		$pics = "<div class=\"sideTableRight\" style=\"float:right;margin-right:-350px;\">
+			<div id=\"picLogo\">".$this->getPic("logo")."</div>$BL<div style=\"display:none;\" id=\"uploadLogo\">$IIL</div>
+			<div id=\"picFoto\">".$this->getPic("foto")."</div>$BF<div style=\"display:none;\" id=\"uploadFoto\">$IIF</div>
+		</div>";*/
+		
+		if($this->A("logo") != "")
+			$OptTab->addRow($this->getPic("logo"));
+		
+		if(Session::isPluginLoaded("Kunden")){
 			$B = new Button("Kundendaten","kunden");
 			$B->loadFrame("contentLeft", "Kunde", "-1", "0", "KundeGUI;AdresseID:{$this->getID()};action:Kappendix");
+			
+			$OptTab->addRow($B);
+		}
+		
+		if(Session::isPluginLoaded("mAdresseNiederlassung")){
+			$B = new Button("Filialen","./open3A/Niederlassungen/AdresseNiederlassung.png");
+			$B->popup("", "Filialen", "mAdresseNiederlassung", "-1", "getPopup", $this->getID(), "", "{position: 'left'}");
+			
 			$OptTab->addRow($B);
 		}
 		
 		if(Applications::activeApplication() == "open3A" OR Applications::activeApplication() == "lightAd"){
-			if($displayMode != null)
-				$OptTab->setTableStyle("width:160px;margin:0px;margin-left:-170px;float:left;");
-
 			if(($id == -1 OR $forReload != "") AND Session::isPluginLoaded("mImport")) {
 				$OTBV = new Button("Schnell-\nImport","import");
-				#$OTBV->rmePCR("importAdresse", "", "getFastImportWindow", "", "Popup.display('Adresse importieren:',transport);");
 				$OTBV->onclick("Import.openSchnellImportAdresse('Adresse importieren:');");
 				$OTBV->id("ButtonAdresseSchnellImport");
 
@@ -98,69 +106,60 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 
 			}
 
-			if($id != -1 AND Session::isPluginLoaded("Kundenpreise") AND $this->A->AuftragID == -1 AND $this->A->type == "default"){
+			if($id != -1 AND Session::isPluginLoaded("Kundenpreise")){
 				$ButtonKundenpreise = new Button("Kundenpreise","package");
 				$ButtonKundenpreise->onclick("contentManager.loadFrame('contentLeft','Kunde', -1, 0, 'KundeGUI;AdresseID:$this->ID;action:Kundenpreise');");
 
 				$OptTab->addRow($ButtonKundenpreise);
 			}
 		
-			if($this->A->AuftragID == -1){
-				$B = $OptTab->addButton("Erweitert", "navigation");
-				$B->popup("", "Erweitert", "Adresse", $this->getID(), "popupExtended");
-			}
+			$B = $OptTab->addButton("Erweitert", "navigation");
+			$B->popup("", "Erweitert", "Adresse", $this->getID(), "popupExtended");
+
 			
-			if($this->A->AuftragID == -1 AND (Session::isPluginLoaded("mAnsprechpartner") OR Session::isPluginLoaded("mOSM"))){
+			if(Session::isPluginLoaded("mAnsprechpartner") OR Session::isPluginLoaded("mOSM")){
 				$OptTab->addRow("");
 				$OptTab->addCellStyle(1, "height:30px;");
 			}
 			
-			if($id != -1 AND Session::isPluginLoaded("mAnsprechpartner") AND $this->A->AuftragID == -1)
+			if($id != -1 AND Session::isPluginLoaded("mAnsprechpartner"))
 				$OptTab->addRow(Ansprechpartner::getButton("Adresse", $this->getID()));
 			
-			if($id != -1 AND Session::isPluginLoaded("mKundenzugang") AND $this->A->AuftragID == -1)
+			if($id != -1 AND Session::isPluginLoaded("mKundenzugang"))
 				$OptTab->addRow(Kundenzugang::getButton($this));
 			
 			
-			if($id != -1 AND Session::isPluginLoaded("mOSM") AND $this->A("AuftragID") == -1)
+			if($id != -1 AND Session::isPluginLoaded("mOSM"))
 				$OptTab->addRow(OpenLayers::getButton("Adresse", $this->getID()));
 			
-			if(Session::isPluginLoaded("mFile")){
+			if(Session::isPluginLoaded("mFile"))
 				$OptTab->addRow(mFileGUI::getManagerButton("WAdresse", $this->getID()));
-			}
 			
 		}
 		
-		if(Session::isPluginLoaded("mklickTel") AND $this->A->AuftragID == -1)
+		if(Session::isPluginLoaded("mklickTel"))
 			$OptTab->addRow(klickTel::getButton($this->getID()));
 		
 
 		$this->loadMeOrEmpty();
 
 		$gui = $this->gui;
-		$gui->insertSpaceAbove("tel", "Kontakt");
-		$gui->insertSpaceAbove("strasse", "Adresse");
-		$gui->insertSpaceAbove("homepage", "Sonstiges");
 		$gui->setFormID("AdresseForm");
 
 		$fields = array(
 			"firma",
-			#"position",
 			"anrede",
 			"vorname",
 			"nachname",
 			"AdresseSpracheID",
 			"strasse",
-			#"bezirk",
-			/*"nr",*/
-			#"zusatz1",
-			#"plz",
 			"ort",
 			"land",
 			"tel",
 			"fax",
 			"mobil",
 			"email",
+			"lieferantennr",
 			"homepage",
 			"gebRem",
 			"gebRemMail",
@@ -170,92 +169,70 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 			"geb",
 			"bemerkung");
 		
-		#if(Session::isPluginLoaded("mLDAP"))
-		#	$fields[] = "exportToLDAP";
-
 		$gui->setShowAttributes($fields);
 		
-		$gui->setLabel("bemerkung", "Notizen");
 		
 		if(Session::isPluginLoaded("mSprache")) {
 			$gui->setLabel("AdresseSpracheID","Sprache");
 			$gui->setLabelDescription("AdresseSpracheID", "und Währung");
-			#$ACS = anyC::get("Sprache");
-			#$S = array();
-			#while($SLW = $ACS->getNextEntry())
-			#	$S[$SLW->getID()] = $SLW->A("SpracheSprache")." "." ".$SLW->A("SpracheWaehrung");
+			
 			$gui->selectWithCollection("AdresseSpracheID", new mSprache(), "SpracheName");
-			#$gui->setType("AdresseSpracheID", "select");
-			#$gui->setOptions("AdresseSpracheID", array_keys($S), array_values($S));
-			#$gui->insertSpaceAbove("firma");
-		} else $gui->setType("AdresseSpracheID","hidden");
+			$gui->activateFeature("addSaveDefaultButton", $this, "AdresseSpracheID");
+		} else
+			$gui->setType("AdresseSpracheID","hidden");
 		
-		#$gui->setAttributes($this->A);
 		$gui->setObject($this);
 		$gui->setName("Adresse");
 		
 		$gui->setOptions("anrede", array_keys(self::getAnreden()), array_values(self::getAnreden()));
 		$gui->setType("anrede","select");
 
+		$gui->insertSpaceAbove("tel", "Kontakt");
+		$gui->insertSpaceAbove("strasse", "Adresse");
+		$gui->insertSpaceAbove("lieferantennr", "Sonstiges");
+		
+		$gui->setFieldDescription("exportToLDAP", "Soll die Adresse auf einen LDAP-Server exportiert werden?");
+		$gui->setFieldDescription("lieferantennr", "Ihre Lieferantennummer bei diesem Kunden. Wird auf den Belegen angezeigt.");
+		
 		$gui->setType("geb","hidden");
 		$gui->setType("gebRemMail","hidden");
 		$gui->setType("gebRem","hidden");
 		$gui->setType("exportToLDAP","checkbox");
-
-		$gui->insertSpaceAbove("exportToLDAP");
-		$gui->setFieldDescription("exportToLDAP", "Soll die Adresse auf einen LDAP-Server exportiert werden?");
-		
 		$gui->setType("AuftragID","hidden");
 		$gui->setType("type","hidden");
 		$gui->setType("bemerkung","textarea");
 
-		#$gui->setLabel("geb","Jahrestag");
+		$gui->setLabel("bemerkung", "Notizen");
 		$gui->setLabel("ort","PLZ/Ort");
 		$gui->setLabel("strasse","Straße/Hausnr.");
 		$gui->setLabel("tel","Telefon");
 		$gui->setLabel("email","E-Mail");
 		$gui->setLabel("exportToLDAP","LDAP-Export?");
+		$gui->setLabel("lieferantennr", "Lieferantennr.");
 		
 		$gui->setParser("strasse", "AdresseGUI::parserStrasse", array($this->A("nr")));
 		$gui->setParser("ort", "AdresseGUI::parserOrt", array($this->A("plz")));
 		
-		#$gui->useAutoCompletion("plz", (Session::isPluginLoaded("Postleitzahlen") ? "Postleitzahlen" : "Adressen"));
+		
 		if(Session::isPluginLoaded("mStammdaten") OR Applications::activeApplication() == "MMDB"){
-			/*if($this->A("land") == ""){
-				$S = Stammdaten::getActiveStammdaten();
-				if($S->A("land") == "D") $S->changeA("land","DE");
-				$this->changeA("land", ISO3166::getCountryToCode($S->A("land")));
-			}*/
-			
 			$gui->setType("land","select");
 
 			$countries = ISO3166::getCountries();
 			$labels = array_merge(array("" => "keine Angabe"), $countries);
 			$values = array_merge(array("" => ""), $countries);
 			$gui->setOptions("land", array_values($values), array_values($labels));
-
-			/*if($this->A("land") != ISO3166::getCountryToCode("GB") AND $this->A("land") != ISO3166::getCountryToCode("US") AND $this->A("land") != ISO3166::getCountryToCode("CH")) {
-				$gui->setLineStyle("zusatz1", "display:none;");
-				$gui->setLineStyle("position", "display:none;");
-			}
-			
-			if($this->A("land") != ISO3166::getCountryToCode("DK") AND $this->A("land") != ISO3166::getCountryToCode("ES"))
-				$gui->setLineStyle("bezirk", "display:none;");
-			
-
-			$gui->setLabel("zusatz1", "Zusatz 1");
-			*/
-			#$gui->setInputJSEvent("land", "onchange", "contentManager.toggleFormFields((this.value == '".ISO3166::getCountryToCode("GB")."' || this.value == '".ISO3166::getCountryToCode("US")."' || this.value == '".ISO3166::getCountryToCode("CH")."') ? 'show' : 'hide', ['zusatz1', 'position']); contentManager.toggleFormFields((this.value == '".ISO3166::getCountryToCode("DK")."' || this.value == '".ISO3166::getCountryToCode("ES")."') ? 'show' : 'hide', ['bezirk']);");
 		}
 
+		
 		if(Session::isPluginLoaded("mTelefonanlage")){
 				$gui->activateFeature("addCustomButton", $this, "tel", Telefonanlage::getCallButton("\$j('input[name=tel]').val()", "telephone", true));
 				$gui->activateFeature("addCustomButton", $this, "mobil", Telefonanlage::getCallButton("\$j('input[name=tel]').val()", "mobile", true));
 		}
 
+		
 		if(Session::isPluginLoaded("Kategorien")){
 			$kat = new Kategorien();
-			$kat->addAssocV3("type","=",($displayMode != "" ? $displayMode : "1" ));
+			$kat->addAssocV3("type","=","1");
 			$keys = $kat->getArrayWithKeys();
 			$keys[] = "0";
 
@@ -265,39 +242,9 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 			$gui->setOptions("KategorieID", $keys, $values);
 
 			$gui->setLabel("KategorieID","Kategorie");
-		}
-		if($AuftragID == -1){
-			if(Session::isPluginLoaded("Kategorien"))
-				$gui->setType("KategorieID","select");
-			else
-				$gui->setType("KategorieID","hidden");
-		}else {
+			$gui->setType("KategorieID","select");
+		} else
 			$gui->setType("KategorieID","hidden");
-			$gui->setType("bemerkung","hidden");
-			$gui->setType("tel","hidden");
-			$gui->setType("fax","hidden");
-			$gui->insertSpaceAbove("email");
-			$gui->setType("homepage","hidden");
-			$gui->setType("exportToLDAP","hidden");
-			$gui->setType("mobil","hidden");
-		}
-
-		switch($displayMode){
-			case "auftragsAdresse":
-				$gui->setJSEvent("onSave","function() {
-					contentManager.loadFrame('contentLeft','Auftrag',{$this->A->AuftragID});
-					contentManager.loadFrame('contentRight','Auftraege');
-				}");
-			break;
-
-			case "lieferAdresse":
-				$this->A->type = "lieferAdresse";
-				$gui->setJSEvent("onSave","function() {
-					contentManager.loadFrame('contentRight','Auftraege');
-					contentManager.loadFrame('subframe','GRLBM',{$this->A->AuftragID});
-				}");
-			break;
-		}
 
 		Aspect::joinPoint("buttons", $this, __METHOD__, $OptTab);
 		
@@ -306,6 +253,47 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 		$gui->customize($this->customizer);
 
 		return $forReload.$OptTab.$gui->getEditHTML();
+	}
+	
+	public function getPic($target, $echo = false){
+		if($this->A($target) == "")
+			return "";
+		
+		$B = new Button("Bild löschen", "trash_stroke", "iconic");
+		#$B->style("float:right;margin-top:-30px;");
+		$B->rmePCR("Adresse", $this->getID(), "removeLogo", "", OnEvent::rme($this, "getPic", array("'logo'", "1"), "function(t){ \$j('#picLogo').html(t.responseText); }"));
+		
+		$Image = new Button("", DBImageGUI::imageLink("Adresse", $this->getID(), $target, false, true), "icon");
+		$Image->style("max-width:150px;");
+		
+		if($echo)
+			echo $Image.$B;
+		
+		return $Image.$B;
+	}
+	
+	public function removeLogo(){
+		$this->changeA("logo", "");
+		$this->saveMe();
+	}
+	
+	public function processUpload($fileName, $target = false){
+		$ex = Util::ext($fileName);
+		
+		if($ex != "jpg" AND $ex != "jpeg" AND $ex != "png")
+			Red::alertD("Bildtyp unbekannt. Bitte verwenden Sie jpg oder png-Dateien.");
+		
+		$tempDir = Util::getTempDir();
+		
+		
+		$imgPath = $tempDir."/".$fileName.".tmp";
+		
+		$this->changeA($target, DBImageGUI::stringifyS("png", $imgPath, 250));
+		$this->saveMe(true, false, false);
+		
+		unlink($imgPath);
+		
+		return true;
 	}
 	
 	function popupExtended(){

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Stammdaten extends PersistentObject implements iCloneable {
 
@@ -44,6 +44,7 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$types["Kalk"] = "kalkulation";
 		$types["O"] = "bestellung";
 		$types["P"] = "anfrage";
+		$types["C"] = "verkauf";
 
 		$ASicon = Aspect::joinPoint("belegIcon", __CLASS__, __METHOD__);
 		if($ASicon != null) $types = array_merge($types, is_array($ASicon) ? $ASicon : array($ASicon));
@@ -63,6 +64,7 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$types["Kalk"] = "Kalkulationen";
 		$types["O"] = "Bestellungen";
 		$types["P"] = "Preisanfragen";
+		$types["C"] = "Verkäufe";
 		
 		
 		$AStype = Aspect::joinPoint("belegTypePlural", __CLASS__, __METHOD__);
@@ -88,6 +90,7 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$types["Kalk"] = "f";
 		$types["O"] = "f";
 		$types["P"] = "f";
+		$types["C"] = "m";
 		
 		$AStype = Aspect::joinPoint("belegTypeGenus", __CLASS__, __METHOD__);
 		if($AStype != null) $types = array_merge($types, is_array($AStype) ? $AStype : array($AStype));
@@ -112,6 +115,7 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$types["Kalk"] = "Kalkulation";
 		$types["O"] = "Bestellung";
 		$types["P"] = "Preisanfrage";
+		$types["C"] = "Verkauf";
 		
 		$typesS = array();
 		$typesS["R"] = "Rechnungs";
@@ -123,6 +127,7 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$typesS["Kalk"] = "Kalkulations";
 		$typesS["O"] = "Bestellungs";
 		$typesS["P"] = "Preisanfrage";
+		$typesS["C"] = "Verkaufs";
 		
 		$AStype = Aspect::joinPoint("belegType", __CLASS__, __METHOD__);
 		if($AStype != null) $types = array_merge($types, is_array($AStype) ? $AStype : array($AStype));
@@ -137,8 +142,9 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		#	if($withS) return $_SESSION["additionalTypesWs"][$of];
 		#	else return $_SESSION["additionalTypes"][$of];
 		else {
-			echo "Type '$of' unknown!";
-			exit();
+			return false;
+			#echo "Type '$of' unknown!";
+			#exit();
 		}
 	}
 
@@ -203,10 +209,15 @@ class Stammdaten extends PersistentObject implements iCloneable {
 		$this->changeA("aktiv", "0");
 		$id = $this->newMe();
 		
-		#$V = new Vorlage($id);
-		#$V->saveMe();
-		
 		echo $id;
+	}
+	
+	public function deleteMe() {
+		if($this->A("aktiv"))
+			Red::errorD ("Die aktiven Stammdaten können nicht gelöscht werden!");
+		
+		$this->changeA("isDeleted", "1");
+		$this->saveMe();
 	}
 }
 ?>
