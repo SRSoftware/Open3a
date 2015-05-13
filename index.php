@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 if(!function_exists("array_replace")){
@@ -139,7 +139,6 @@ if($sephy AND isset($sephy[3]) AND $sephy[3])
 <html>
 	<head>
 		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-		<meta name="revisit-after" content="14 days" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 		<title><?php echo $title ?></title>
 
@@ -180,7 +179,7 @@ if($sephy AND isset($sephy[3]) AND $sephy[3])
 		<script type="text/javascript" src="./libraries/flot/jquery.flot.pie.js"></script>
 		<script type="text/javascript" src="./libraries/flot/jquery.flot.selection.js"></script>
 		<script type="text/javascript" src="./libraries/flot/jquery.flot.orderBars.js"></script>
-		<script type="text/javascript" src="./libraries/nicEdit/nicEdit.js"></script>
+		<!--<script type="text/javascript" src="./libraries/nicEdit/nicEdit.js"></script>-->
 		<script type="text/javascript" src="./libraries/modernizr.custom.js"></script>
 		<script type="text/javascript" src="./libraries/snap.svg/snap.svg-min.js"></script>
 		<script type="text/javascript" src="./libraries/touchy/Touchy.js"></script>
@@ -193,7 +192,7 @@ if($sephy AND isset($sephy[3]) AND $sephy[3])
 		<script type="text/javascript" src="./javascript/Registry.js?r=<?php echo $build; ?>"></script>
 
 		<script type="text/javascript" src="./javascript/Aspect.js?r=<?php echo $build; ?>"></script>
-		<script type="text/javascript" src="./javascript/Observer.js?r=<?php echo $build; ?>"></script>
+		<!--<script type="text/javascript" src="./javascript/Observer.js?r=<?php echo $build; ?>"></script>-->
 		<script type="text/javascript" src="./javascript/Overlay.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/Menu.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/autoComplete.js?r=<?php echo $build; ?>"></script>
@@ -202,7 +201,7 @@ if($sephy AND isset($sephy[3]) AND $sephy[3])
 		<script type="text/javascript" src="./javascript/Interface.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/Popup.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/contentManager.js?r=<?php echo $build; ?>"></script>
-		<script type="text/javascript" src="./javascript/DesktopLink.js?r=<?php echo $build; ?>"></script>
+		<!--<script type="text/javascript" src="./javascript/DesktopLink.js?r=<?php echo $build; ?>"></script>-->
 		<script type="text/javascript" src="./javascript/notificationArea.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/handler.js?r=<?php echo $build; ?>"></script>
 		<script type="text/javascript" src="./javascript/Util.js?r=<?php echo $build; ?>"></script>

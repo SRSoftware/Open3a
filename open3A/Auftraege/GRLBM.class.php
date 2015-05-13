@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeletable2 {
 
@@ -24,7 +24,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 	protected $letterType = "";
 	public $CustomizerTeilzahlungen = false;
 	public $CustomizerPostenAddLabelInsertOrigin = true;
-
+	protected $newPostenMessageBestand = "";
 	// <editor-fold defaultstate="collapsed" desc="getOnDeleteEvent">
 	public function getOnDeleteEvent(){
 		return "function() { contentManager.reloadFrameRight(); contentManager.reloadFrameLeft(); }";
@@ -79,7 +79,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		$this->changeA("zahlungsbedingungenID", isset($TBZ[0][0]) ? $TBZ[0][0] : 0);
 		
 		$this->changeA("datum", Util::CLDateParser(time()));
-		$this->changeA("lieferDatum", Util::CLDateParser(time()));
+		#$this->changeA("lieferDatum", Util::CLDateParser(time()));
 
 		$this->saveMe(true, false);
 
@@ -388,7 +388,8 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		Posten::$recalcBeleg = false;
 		$mP = new mPosten();
 		$mP->cloneAllToGRLBM($oldGRLBMID);
-		if(!$quiet) echo $this->A->AuftragID;
+		if(!$quiet)
+			echo $this->A->AuftragID;
 		Posten::$recalcBeleg = true;
 		
 		return $newGRLBMID;
@@ -439,13 +440,14 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 
 	// <editor-fold defaultstate="collapsed" desc="getPostenCopy">
 	public function getPostenCopy($ArtikelID, $menge = 1, $beschreibung = null, $kundennummer = null, $preis = null){
-		$this->loadMe();
-		if($this->A->isPayed == "1")
+		if($this->A("isPayed") == "1")
 			die("alert:AuftraegeMessages.A004");
 			
-		$_SESSION["messages"]->addMessage("creating Posten for Auftrag ".$this->ID." of Artikel $ArtikelID");
+		#$_SESSION["messages"]->addMessage("creating Posten for Auftrag ".$this->ID." of Artikel $ArtikelID");
 		$p = new Posten(-1);
-		return $p->newFromArtikel($ArtikelID, $this->ID, $menge, $beschreibung, $kundennummer, $preis);
+		$id = $p->newFromArtikel($ArtikelID, $this->ID, $menge, $beschreibung, $kundennummer, $preis);
+		$this->newPostenMessageBestand = $p->messageBestand;
+		return $id;
 	}
 	// </editor-fold>
 
@@ -459,15 +461,32 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		$this->copyPostenFromPostenIDs = array();
 		
 		$GRLBM = new GRLBM($fromId);
-		if($GRLBM->getMyPrefix() == "L" AND $this->getMyPrefix() == "R")
-			$this->changeA("lieferDatum", $GRLBM->A("datum"));
+		if($GRLBM->A("AuftragID") == $this->A("AuftragID")){
+			if($GRLBM->getMyPrefix() == "B" AND $this->getMyPrefix() != "B")
+				if($this->getMyPrefix() == "L")
+					$this->changeA("datum", $GRLBM->A("lieferDatum"));
+				else
+					$this->changeA("lieferDatum", $GRLBM->A("lieferDatum"));
+
+			if($GRLBM->getMyPrefix() == "L" AND $this->getMyPrefix() == "R")
+				$this->changeA("lieferDatum", $GRLBM->A("datum"));
+
+			if($GRLBM->getMyPrefix() == "A" AND $this->getMyPrefix() == "B")
+				$this->changeA("lieferDatum", $GRLBM->A("lieferDatum"));
+		}
+		
+		$P = new Posten(-1);
+		$P->loadMeOrEmpty();
 		
 		$ps = new anyC();
 		$ps->setCollectionOf("Posten");
-		$ps->addAssocV3("GRLBMID","=",$fromId);
+		$ps->addAssocV3("GRLBMID", "=", $fromId);
+		if($P->A("PostenSortOrder") !== null)
+			$ps->addOrderV3("PostenSortOrder");
+		
 		$ps->addOrderV3("PostenID");
 		$i = 0;
-		while(($t = $ps->getNextEntry())){
+		while(($t = $ps->n())){
 			$A = $t->getA();
 			$A->GRLBMID = $this->getID();
 			if(isset($A->PostenSortOrder))
@@ -489,12 +508,28 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 				
 				$temp = Posten::$recalcBeleg;
 				Posten::$recalcBeleg = false;
-				$this->copyPostenFromPostenIDs[] = $nP->newMe();
+				$this->copyPostenFromPostenIDs[] = $newID = $nP->newMe();
+				
+				if(Session::isPluginLoaded("mPostenKalkulation")){
+					$AC = anyC::get("PostenKalkulation", "PostenKalkulationPostenID", $t->getID());
+					while($PK = $AC->n()){
+						$PK->changeA("PostenKalkulationPostenID", $newID);
+						$PK->newMe();
+					}
+				}
+				
 				Posten::$recalcBeleg = $temp;
 			}
 			
 			$i++;
 		}
+		
+		
+		if($GRLBM->A("AuftragID") == $this->A("AuftragID"))
+			for($i = 1;$i < 20; $i++)
+				if($GRLBM->A("GRLBMCustomField$i") !== null)
+					$this->changeA("GRLBMCustomField$i", $GRLBM->A("GRLBMCustomField$i"));
+
 
 		$this->saveMe();
 		$G = new GRLBM($this->getID(), false);
@@ -576,7 +611,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 	
 	// <editor-fold defaultstate="collapsed" desc="addArtikel">
 	public function addArtikel($ArtikelID, $menge = 1, $beschreibung = null, $kundennummer = null, $preis = null){
-		$this->getPostenCopy($ArtikelID, $menge, $beschreibung, $kundennummer, $preis);
+		return $this->getPostenCopy($ArtikelID, $menge, $beschreibung, $kundennummer, $preis);
 	}
 	// </editor-fold>
 
@@ -748,7 +783,8 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 
 	// <editor-fold defaultstate="collapsed" desc="getMyPrefix">
 	public function getMyPrefix($forceB = false){
-		if($this->A == null) $this->loadMe();
+		if($this->A == null)
+			$this->loadMe();
 
 		if($this->A->isR == "1") return "R";
 		if($this->A->isL == "1") return "L";

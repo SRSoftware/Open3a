@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class KappendixCRMGUI extends Kappendix implements iGUIHTMLMP2 {
 	
@@ -25,11 +25,18 @@ class KappendixCRMGUI extends Kappendix implements iGUIHTMLMP2 {
 	}
 	
 	public function getHTML($id, $page){
-		
-		$K = Kappendix::getKappendixToAdresse(BPS::getProperty(get_class($this), "ownerClassID"));
-		if($K == null)
-			return "<div style=\"min-height:500px;\">"."<p>Zu dieser Adresse wurden noch keine Kundendaten angelegt.</p></div>";
-		
+		$AID = BPS::getProperty(get_class($this), "ownerClassID");
+		$K = Kappendix::getKappendixToAdresse($AID);
+		$pSpecData = mUserdata::getPluginSpecificData("mAkquise");
+		if($K == null){
+			$B = new Button("Kundendaten\nanlegen", "new");
+			$B->style("margin:10px;");
+			$B->rmePCR("KappendixCRM", "-1", "createCustomerData", array("$AID"), OnEvent::reload("Left"));
+			if(!Session::isPluginLoaded("Auftraege") OR isset($pSpecData["pluginSpecificCanSeeOnlyOwn"]))
+				$B = "";
+			
+			return "<div style=\"min-height:500px;\">"."<p style=\"padding-left:10px;\">Zu dieser Adresse wurden noch keine Kundendaten angelegt.</p>$B</div>";
+		}
 		#$T = new HTMLTable(4, "Kundendaten");
 		$widths = Aspect::joinPoint("changeWidths", $this, "CRMHTMLGUI::getEditHTML");
 		if($widths == null) $widths = array(700, 132, 218);
@@ -59,6 +66,11 @@ class KappendixCRMGUI extends Kappendix implements iGUIHTMLMP2 {
 		$T->addRow(array("<label>Gültig bis:</label>", $K->A("KappendixKarteValidUntil"), "", ""));
 		
 		return "<div style=\"min-height:500px;\">".$T."</div>";
+	}
+	
+	public function createCustomerData($AdresseID){
+		$K = new Kunden();
+		$K->createKundeToAdresse($AdresseID, false);
 	}
 	
 	

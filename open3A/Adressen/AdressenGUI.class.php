@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, icontextMenu, iSearchFilter, iCategoryFilter {
 	
@@ -174,8 +174,12 @@ class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 			if(trim($AP->A("AnsprechpartnerVorname")." ".$AP->A("AnsprechpartnerNachname")) != ""){
 				$TAP->insertSpaceAbove($AP->A("AnsprechpartnerPosition"));
 				$TAP->addLV("Name:", $AP->A("AnsprechpartnerVorname")." ".$AP->A("AnsprechpartnerNachname"));
-				if($AP->A("AnsprechpartnerTel") != "") $TAP->addLV("Telefon:", $AP->A("AnsprechpartnerTel"));
-				if($AP->A("AnsprechpartnerEmail") != "") $TAP->addLV("E-Mail:", $AP->A("AnsprechpartnerEmail"));
+				if($AP->A("AnsprechpartnerTel") != "")
+					$TAP->addLV("Telefon:", $AP->A("AnsprechpartnerTel"));
+				if($AP->A("AnsprechpartnerMobil") != "")
+					$TAP->addLV("Mobil:", $AP->A("AnsprechpartnerMobil"));
+				if($AP->A("AnsprechpartnerEmail") != "")
+					$TAP->addLV("E-Mail:", "<a href=\"mailto:".$AP->A("AnsprechpartnerEmail")."\">".$AP->A("AnsprechpartnerEmail")."</a>");
 			}
 		}
 
@@ -307,7 +311,7 @@ class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 				
 				$this->lCV3();
 
-				if($this->numLoaded() > 0){
+				if(Session::isPluginLoaded("Kunden") AND $this->numLoaded() > 0){
 					$AC = anyC::get("Kappendix");
 					while($A = $this->getNextEntry())
 						$AC->addAssocV3("AdresseID", "=", $A->getID(), "OR");
@@ -452,5 +456,9 @@ class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 	function getCategoryFieldName(){
 		return "t1.KategorieID";
 	}
+	
+	#public function getCategoryFieldLabel(array $KIDs){
+		
+	#}
 }
 ?>

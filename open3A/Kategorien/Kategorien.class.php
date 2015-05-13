@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Kategorien extends anyC {
 	function __construct() {
@@ -51,9 +51,11 @@ class Kategorien extends anyC {
 		return $keys;
 	}
 	
-	public function getArrayWithValues(){
+	public function getArrayWithValues($zeroEntry = null){
 		if($this->A == null) $this->lCV3();
 		$values = array();
+		if($zeroEntry != null)
+			$values[0] = $zeroEntry;
 		
 		for($i=0;$i < count($this->collector);$i++){
 			$A = $this->collector[$i]->getA();

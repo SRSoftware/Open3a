@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class HTMLForm {
 	protected $id;
@@ -74,6 +74,7 @@ class HTMLForm {
 	private $autocomplete = array();
 	private $printColon = true;
 	private $callbacks = "";
+	private $placeholders = array();
 	
 	public function printColon($b){
 		$this->printColon = $b;
@@ -83,22 +84,30 @@ class HTMLForm {
 		switch($event){
 			case "onChange":
 			case "onchange":
-				if(!isset($this->onChange[$fieldName])) $this->onChange[$fieldName] = "";
+				if(!isset($this->onChange[$fieldName]))
+					$this->onChange[$fieldName] = "";
+				
 				$this->onChange[$fieldName] .= $function;
 			break;
 			case "onBlur":
 			case "onblur":
-				if(!isset($this->onBlur[$fieldName])) $this->onBlur[$fieldName] = "";
+				if(!isset($this->onBlur[$fieldName]))
+					$this->onBlur[$fieldName] = "";
+				
 				$this->onBlur[$fieldName] .= $function;
 			break;
 			case "onFocus":
 			case "onfocus":
-				if(!isset($this->onFocus[$fieldName])) $this->onFocus[$fieldName] = "";
+				if(!isset($this->onFocus[$fieldName]))
+					$this->onFocus[$fieldName] = "";
+				
 				$this->onFocus[$fieldName] .= $function;
 			break;
 			case "onKeyup":
 			case "onkeyup":
-				if(!isset($this->onKeyup[$fieldName])) $this->onKeyup[$fieldName] = "";
+				if(!isset($this->onKeyup[$fieldName]))
+					$this->onKeyup[$fieldName] = "";
+				
 				$this->onKeyup[$fieldName] .= $function;
 			break;
 		}
@@ -182,7 +191,11 @@ class HTMLForm {
 		$this->inputStyle[$fieldName] = $style;
 	}
 
-	public function __construct($formID, $fields, $title = null){
+	public function setPlaceholder($fieldName, $style){
+		$this->placeholders[$fieldName] = $style;
+	}
+
+	public function __construct($formID, $fields, $title = null, $virtualFields = array()){
 		$this->id = $formID;
 
 		if(is_array($fields))
@@ -192,6 +205,7 @@ class HTMLForm {
 			$this->fields = PMReflector::getAttributesArrayAnyObject($fields->getA());
 		}
 
+		$this->virtualFields = $virtualFields;
 		$this->types = array();
 		$this->labels = array();
 		$this->options = array();
@@ -345,6 +359,14 @@ class HTMLForm {
 			else
 				$values .= ($values != "" ? ", " : "")."\$('$this->id').$f.checked ? '1' : '0'";
 		}
+		
+		foreach($this->virtualFields AS $f){
+			if(!isset($this->types[$f]) OR $this->types[$f] != "checkbox")
+				$values .= ($values != "" ? ", " : "")."\$('$this->id').$f.value";
+			else
+				$values .= ($values != "" ? ", " : "")."\$('$this->id').$f.checked ? '1' : '0'";
+		}
+		
 		$this->saveButtonSubmit = "contentManager.rmePCR('$targetClass', '$targetClassId', '$targetMethod', [$values]".($onSuccessFunction != "" ? ", $onSuccessFunction" : "").");";
 		$this->onSubmit = $this->saveButtonSubmit."return false;";
 	}
@@ -461,6 +483,27 @@ class HTMLForm {
 		$this->spaceLines[$fieldName] = $label;
 	}
 
+
+	public function insertField($where, $fieldName, $insertedFieldName){
+		if($where == "after")
+			$add = 1;
+
+		if($where == "before")
+			$add = 0;
+
+		$resetKeys = array();
+		foreach($this->fields AS $v)
+			$resetKeys[] = $v;
+		
+		$this->fields = $resetKeys;
+		
+		$first = array_splice($this->fields, 0, array_search($fieldName, $this->fields) + $add);
+		$last = array_splice($this->fields, array_search($fieldName, $this->fields));
+
+		$this->fields = array_merge($first, array($insertedFieldName), $last);
+		
+	}
+	
 	public function setDescriptionField($fieldName, $description){
 		$this->descriptionField[$fieldName] = $description;
 	}
@@ -483,11 +526,12 @@ class HTMLForm {
 			if(isset($this->types[$v]) AND ($this->types[$v] == "tinyMCE" OR $this->types[$v] == "TextEditor" OR $this->types[$v] == "nicEdit")){
 				$options = array($this->id, $v);
 				if(isset($this->options[$v]))
-					$options[] = $this->options[$v][0];
+					foreach($this->options[$v] AS $ov)
+						$options[] = $ov;
 				
 				$this->options[$v] = $options;
 			}
-			
+
 			$Input = new HTMLInput(
 				$v,
 				isset($this->types[$v]) ? $this->types[$v] : "text",
@@ -512,6 +556,9 @@ class HTMLForm {
 			if(isset($this->autocomplete[$v]))
 				$Input->autocomplete($this->autocomplete[$v][0], $this->autocomplete[$v][1]);
 			
+			if(isset($this->placeholders[$v]))
+				$Input->placeholder($this->placeholders[$v]);
+			
 			$Input->isDisplayMode(!$this->editable);
 		} else {
 			$method = explode("::", $this->options[$v][0]);
@@ -530,7 +577,12 @@ class HTMLForm {
 		if(!isset($this->types[$v]) OR $this->types[$v] != "parser"){
 			if(isset($this->buttons[$v])) {
 				$B = $this->buttons[$v];
-				if((!isset($this->types[$v]) OR $this->types[$v] == "text" OR $this->types[$v] == "select" OR $this->types[$v] == "readonly") AND strpos($this->inputStyle[$v], "width") === false)
+				if(
+					(!isset($this->types[$v]) 
+						OR $this->types[$v] == "text" 
+						OR $this->types[$v] == "select" 
+						OR $this->types[$v] == "readonly") 
+					AND (isset($this->inputStyle[$v]) AND strpos($this->inputStyle[$v], "width") === false))
 					$Input->style("width:87%;");
 			}
 		}
@@ -605,7 +657,7 @@ class HTMLForm {
 
 					if($this->cols == 1) {
 						$this->table->addRow(
-						"<label>".(isset($this->labels[$v]) ? $this->labels[$v] : ucfirst($v)).":</label>");
+						"<label ".($this->cols == 1 ? "style=\"width:100%;\"" : "").">".(isset($this->labels[$v]) ? $this->labels[$v] : ucfirst($v)).":</label>");
 						$this->table->addRowClass("backgroundColor3");
 
 						$this->table->addRow(

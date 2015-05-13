@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Adresse extends PersistentObject implements iDeletable, iXMLExport, iCloneable/*, iLDAPExport*/ {
 
@@ -101,6 +101,7 @@ class Adresse extends PersistentObject implements iDeletable, iXMLExport, iClone
 		$A->AuftragID = "-1";
 		$A->KategorieID = "0";
 		$A->type = "default";
+		$A->AdresseSpracheID = mUserdata::getUDValueS("DefaultValueAdresseAdresseSpracheID", 0);
 		
 		$mwst = 0;
 		if(Session::isPluginLoaded("Kategorien")){
@@ -197,12 +198,14 @@ class Adresse extends PersistentObject implements iDeletable, iXMLExport, iClone
 	function newMe($checkUserData = true, $output = false){
 		$ps = mUserdata::getPluginSpecificData("Adressen");
 		
-		if(isset($ps["pluginSpecificCanUse1xAdresse"]) AND $this->A->AuftragID == -1) die("<p>Erstellen nicht möglich!<br />Plugin-spezifische Einstellungen aktiv.<br /><br />Sie können das Erstellen von Einträgen im Adressen-Plugin auch verbieten, dann wird die Option \"Adresse neu anlegen\" nicht mehr angezeigt.<br />Neue 1x-Adressen können weiterhin verwendet werden.</p>");
-		elseif(!isset($ps["pluginSpecificCanUse1xAdresse"])) mUserdata::checkRestrictionOrDie("cantCreate".str_replace("GUI","",get_class($this)));
+		if(isset($ps["pluginSpecificCanUse1xAdresse"]) AND $this->A->AuftragID == -1)
+			die("<p>Erstellen nicht möglich!<br />Plugin-spezifische Einstellungen aktiv.<br /><br />Sie können das Erstellen von Einträgen im Adressen-Plugin auch verbieten, dann wird die Option \"Adresse neu anlegen\" nicht mehr angezeigt.<br />Neue 1x-Adressen können weiterhin verwendet werden.</p>");
+		elseif(!isset($ps["pluginSpecificCanUse1xAdresse"]))
+			mUserdata::checkRestrictionOrDie("cantCreate".str_replace("GUI","",get_class($this)));
 		
-		$this->changeA("lastChange", time());
-		
-		$id = parent::newMe(false, $output);
+		$this->changeA("lastChange", 0);
+
+		$id = parent::newMe(false, false);
 		
 		
 		if($this->A("AuftragID") != -1 AND $this->A("type") == "auftragsAdresse"){
@@ -212,6 +215,9 @@ class Adresse extends PersistentObject implements iDeletable, iXMLExport, iClone
 		
 		if(Session::isPluginLoaded("mSync") AND $this->A("AuftragID") == -1)
 			mSync::newGUID("Adresse", $id, null, false);
+		
+		if($output)
+			Red::messageCreated();
 		
 		return $id;
 	}
@@ -227,8 +233,12 @@ class Adresse extends PersistentObject implements iDeletable, iXMLExport, iClone
 
 		$ps = mUserdata::getPluginSpecificData("Adressen");
 
-		if(isset($ps["pluginSpecificCanUse1xAdresse"]) AND $this->A->AuftragID == -1) die("Speichern nicht möglich!");
-
+		if(isset($ps["pluginSpecificCanUse1xAdresse"]) AND $this->A->AuftragID == -1)
+			die("Speichern nicht möglich!");
+		
+		if($checkUserData AND $this->A("lastChange") != "0")
+			mUserdata::checkRestrictionOrDie("cantEdit".str_replace("GUI","",get_class($this)));
+		
 		$this->changeA("lastChange", time());
 		
 		if($this->A("emailInvalid") > 0){
@@ -246,7 +256,7 @@ class Adresse extends PersistentObject implements iDeletable, iXMLExport, iClone
 			LDAP::update($this, $this->getDir());
 		
 		// <editor-fold defaultstate="collapsed" desc="Aspect:jP">
-		return Aspect::joinPoint("after", $this, __METHOD__, array($this->getA(), parent::saveMe($checkUserData, $output)));
+		return Aspect::joinPoint("after", $this, __METHOD__, array($this->getA(), parent::saveMe(false, $output)));
 		// </editor-fold>
 	}
 	

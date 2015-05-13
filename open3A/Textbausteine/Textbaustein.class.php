@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Textbaustein extends PersistentObject implements iCloneable, iNewWithValues, iDeletable {
 
@@ -122,6 +122,17 @@ class Textbaustein extends PersistentObject implements iCloneable, iNewWithValue
 		$this->checkUnique();
 		
 		parent::saveMe($checkUserData, $output);
+	}
+	
+	public static function types(){
+		$options = array();
+		foreach($_SESSION["TBKategorien"] AS $k => $v)
+			$options[$k] = $v;
+
+		while($R = Registry::callNext("Textbausteine"))
+			$options[$R[0]] = $R[1];
+			
+		return $options;
 	}
 	
 }

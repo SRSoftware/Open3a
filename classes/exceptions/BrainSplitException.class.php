@@ -1,5 +1,5 @@
+<?php
 /*
- *
  *  This file is part of phynx.
 
  *  phynx is free software; you can redistribute it and/or modify
@@ -15,15 +15,9 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
+class BrainSplitException extends StorageException {
 
- var Observer = {
-	lastMouseX: 0,
-	lastMouseY: 0
 }
-
-$j(document).mousemove(function(event){
-	Observer.lastMouseX = event.pageX;
-	Observer.lastMouseY = event.pageY;
-});
+?>

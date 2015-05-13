@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class VorlageGUI extends Vorlage implements iGUIHTML2 {
 	private static $instance;
@@ -27,14 +27,16 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			"VorlageLabel",
 			"VorlageWidth",
 			"VorlageFont",
+			"VorlageColor",
 			"VorlagePosition",
 			"VorlageMargin",
 			"VorlageSum",
 			"VorlageFooter",
 			"VorlageAlign",
-			#"VorlagePayment",
+			"VorlagePayment",
 			"VorlageShow",
-			"VorlageNewFonts"
+			"VorlageNewFonts",
+			"VorlageOrder"
 		);
 	
 	private static $c = 1;
@@ -47,6 +49,8 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			
 			echo "<script type=\"text/javascript\">lastLoadedLeft = $id;</script>";
 		}
+		
+		$bps = $this->getMyBPSData();
 		
 		$AC = anyC::get("GRLBM", "isR", "1");
 		$AC->addAssocV3("isA", "=", "1", "OR");
@@ -65,7 +69,8 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		$AC->lCV3();
 		
 		self::$locked = $AC->numLoaded() > 10;
-		
+		if($bps != -1 AND isset($bps["overwrite"]))
+			self::$locked = false;
 		#if(self::$locked)
 		#	$gui->optionsEdit(false, false);
 		
@@ -101,6 +106,11 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		if(self::$locked)
 			$B->disabled (true);
 	
+		$B = $gui->addSideButton("Farben", "./open3A/Vorlagen/color.png");
+		$B->popup("", "Farben", "Vorlage", $this->getID(), "getSubPopup", "color");
+		if(self::$locked)
+			$B->disabled (true);
+	
 		$B = $gui->addSideButton("Positionen", "./open3A/Vorlagen/position.png");
 		$B->popup("", "Positionen", "Vorlage", $this->getID(), "getSubPopup", "position");
 		if(self::$locked)
@@ -126,9 +136,15 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		if(self::$locked)
 			$B->disabled (true);
 	
-		#$B = $gui->addSideButton("Zahlung", "./open3A/Vorlagen/zahlung.png");
-		#$B->popup("", "Fußzeile", "Vorlage", $this->getID(), "getSubPopup", "payment");
+		$B = $gui->addSideButton("Reihenfolge", "./open3A/Vorlagen/reihenfolge.png");
+		$B->popup("", "Reihenfolge", "Vorlage", $this->getID(), "getSubOrderPopup", "order", "", "{width: 600}");
+		if(self::$locked)
+			$B->disabled (true);
 	
+		if(Session::isPluginLoaded("mBezahlCode")){
+			$B = $gui->addSideButton("Zahlung", "./open3A/Vorlagen/zahlung.png");
+			$B->popup("", "Fußzeile", "Vorlage", $this->getID(), "getSubPopup", "payment");
+		}
 		
 		$B = $gui->addSideButton("Optionen", "./open3A/Vorlagen/show.png");
 		$B->popup("", "Optionen", "Vorlage", $this->getID(), "getSubPopup", "show");
@@ -146,17 +162,20 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		$gui->parser("VorlageLabel", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageMargin", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageFont", "VorlageGUI::parserGUILabel");
+		$gui->parser("VorlageColor", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlagePosition", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageShow", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageMargin", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageSum", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageFooter", "VorlageGUI::parserGUILabel");
-		$gui->parser("VorlagePayment", "VorlageGUI::parserGUILabel");
+		if(Session::isPluginLoaded("mBezahlCode"))
+			$gui->parser("VorlagePayment", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageAlign", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageLogo", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageBackground", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageAppend", "VorlageGUI::parserGUILabel");
 		$gui->parser("VorlageNewFonts", "VorlageGUI::parserNewFonts");
+		$gui->parser("VorlageOrder", "VorlageGUI::parserOrder");
 		
 		$gui->space("VorlageLogo");
 		
@@ -173,12 +192,21 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		$gui->label("VorlageAlign", "Ausrichtung");
 		$gui->label("VorlageBackground", "Hintergrund");
 		$gui->label("VorlageAppend", "Anhang");
+		$gui->label("VorlageColor", "Farben");
+		$gui->label("VorlageOrder", "Reihenfolge");
 		
-	
+		if(!Session::isPluginLoaded("mBezahlCode"))
+			$gui->type("VorlagePayment", "hidden");
+		
 		$BE = new Button("Code-Editor", "./open3A/Vorlagen/code.png");
 		$BE->popup("", "Code-Editor", "Vorlage", $this->getID(), "getCustomCodePopup", "", "", "{width:800}");
 		if(self::$locked)
 			$BE->disabled (true);
+		
+		$CH = Util::getCloudHost();
+		if($CH != null)
+			$BE = "";
+		
 		
 		$BS = new Button("Stammdaten\nüberschreiben", "system");
 		$BS->popup("", "Optionen", "Vorlage", $this->getID(), "getStammdatenPopup", "show");
@@ -213,7 +241,7 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			$B->style("float:right;margin-left:10px;");
 			$B->onclick("contentManager.rmePCR('Vorlage', '".$this->getID()."', 'cloneMe', [''], function(transport){ lastLoadedLeft = (transport.responseText == '' ? -1 : transport.responseText); contentManager.reloadFrameLeft(); contentManager.reloadFrameRight(); }, '', true );");
 			
-			$TL->addRow(array("{$B}Diese Vorlage kann nicht mehr bearbeitet werden, da Sie in mehr als 10 Aufträgen verwendet wird. Bitte kopieren Sie diese Vorlage, um Änderungen vorzunehmen."));
+			$TL->addRow(array("{$B}Diese Vorlage kann nicht mehr bearbeitet werden, da Sie in mehr als 10 Aufträgen verwendet wird. Bitte kopieren Sie diese Vorlage, um Änderungen vorzunehmen.<a href=\"#\" onclick=\"".OnEvent::frame("Left", "Vorlage", $this->getID(), 0, "", "VorlageGUI;overwrite:true")."return false;\" class=\"hiddenLink\">&nbsp;</a>"));
 			$TL->addRowClass("highlight");
 		} else {
 			$BN = new Button("", "notice", "icon");
@@ -325,7 +353,7 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 	private static function getAttributes(){
 		if(self::$instance == null)
 			self::$instance = new PDFBrief(Stammdaten::getActiveStammdaten());
-	
+		
 		$reflect = new ReflectionClass(self::$instance);
 		
 		$props = $reflect->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED);
@@ -349,6 +377,10 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 	}
 	
 	public function getCustomCodePopup(){
+		$CH = Util::getCloudHost();
+		if($CH != null)
+			die("<p class=\"highlight\">Diese Funktionalität steht in der Cloud leider nicht zur Verfügung. Bitte wenden Sie sich an den Support.</p>");
+		
 		echo "<p><small style=\"color:grey;\">Mit diesem Editor können Sie Ihre Vorlage um eigenen PHP-Code erweitern. Bitte verwenden Sie diesen Editor daher nur, wenn Sie wissen, was Sie tun.</small></p>";
 		
 		$I = new HTMLInput("VorlageCustomCode", "textarea", $this->A("VorlageCustomCode"));
@@ -363,6 +395,10 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 	}
 	
 	public function saveCustomCode($code){
+		$CH = Util::getCloudHost();
+		if($CH != null)
+			return;
+		
 		$this->changeA("VorlageCustomCode", $code);
 		$this->saveMe(true, true);
 	}
@@ -446,26 +482,187 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		echo "<p><small style=\"color:grey;\">Überschreiben Sie die Stammdaten, indem Sie in den Feldern etwas eintragen.</small></p><div style=\"max-height:400px;overflow:auto;\">".$F."</div>";
 	}
 	
+	public function getSubOrderPopup($find){
+		$fields = $this->getSub($find);
+		$attributes = $this->getAttributes();
+		
+		$this->check($attributes);
+		
+		#print_r($fields);
+		
+		echo "<p><small style=\"color:grey;\">Ziehen Sie die gewünschten Felder von rechts nach links.</small></p>";
+		
+		$lab = array(
+			"belegnummer" => "Belegnummer",
+			"custom1" => "Benutzerfelder oben",
+			"leer" => "Leer",
+			"custom2" => "Benutzerfelder unten",
+			"KundeAnsprechpartner" => "Kunde Ansprechpartner",
+			"KundeTelefon" => "Kunde Telefon",
+			"KundeEMail" => "Kunde E-Mail",
+			"MwSt" => "MwSt %",
+			"MwStBetrag" => "MwSt Betrag",
+			"EinzelpreisNetto" => "Einzelpreis Netto",
+			"Rabattpreis" => "Rabattpreis",
+			"Rabatt" => "Rabatt in %");
+		
+		$noStrike = array(
+			"belegnummer",
+			"custom1",
+			"leer",
+			"custom2",
+		);
+		
+		$doStrike = array();
+		
+		if($this->A("VorlageLabel") != ""){
+			$data = json_decode($this->A("VorlageLabel"));
+			foreach($data AS $field){
+				if(strpos($field->name, "optional") !== 0)
+					continue;
+				
+				if($field->value == "0")
+					$doStrike[] = str_replace("optionallabel", "", $field->name);
+				else
+					$noStrike[] = str_replace("optionallabel", "", $field->name);
+				#echo ." : $field->value<br>";
+			}
+		}
+		
+		if($this->A("VorlageWidth") != ""){
+			$data = json_decode($this->A("VorlageWidth"));
+			foreach($data AS $field){
+				if(strpos($field->name, "optional") !== 0)
+					continue;
+				
+				if($field->value == "0")
+					$doStrike[] = str_replace("optionalwidth", "", $field->name);
+				else
+					$noStrike[] = str_replace("optionalwidth", "", $field->name);
+				#echo ." : $field->value<br>";
+			}
+		}
+		
+		
+		
+		
+		$D = array();
+		foreach(explode(";", trim($this->A("VorlageOrder"), ";")) AS $v){
+			$ex = explode(":", $v);
+			$D[$ex[0]] = $ex[1];
+		}
+		
+		echo "<div style=\"max-height:400px;overflow:auto;\">";
+		foreach($fields AS $name){
+			$doc = $attributes[$name]->getDocComment();
+			preg_match_all("/@label (.*)\n/", $doc, $labels);
+			
+			if(isset($labels[1][0]))
+				echo "<p class=\"prettySubtitle\">".$labels[1][0]."</p>";#$F->setLabel($name, $labels[1][0]);
+			
+			$available = self::$instance->A($name);
+			
+			$LU = new HTMLList();
+			$LU->setListID($name."used");
+			$LU->addListStyle("min-height:100px;");
+			$LU->addListClass("usedFields");
+			$LU->addListData("name", $name);
+			
+			if(isset($D[$name]) AND $D[$name]){
+				$ex = explode(",", $D[$name]);
+				foreach($ex AS $A){
+					$N = $A;
+					if(self::$instance->A("label".$A))
+						$N = self::$instance->A("label".$A);
+					
+					if($name == "orderRechnungsInfo" AND !self::$instance->A("label".$A) AND !in_array($A, $noStrike))
+						$strike = true;
+					
+					if($name == "orderRechnungsInfo" AND in_array($A, $doStrike))
+						$strike = true;
+					
+					if(($name == "orderColsPrice" OR $name == "orderCols") AND !self::$instance->A("label".$A) AND !in_array($A, $noStrike))
+						$strike = true;
+					
+					if(($name == "orderColsPrice" OR $name == "orderCols") AND in_array($A, $doStrike))
+						$strike = true;
+				
+					if(isset($lab[$A]))
+						$N = $lab[$A];
+
+					$B = new Button("Element löschen", "trash_stroke", "iconic");
+					$B->style("float:right;margin-right:10px;");
+					$B->onclick("\$j(this).parent().remove();");
+
+					$LU->addItem($B."<span ".($strike ? "title=\"Eintrag wurde ausgeblendet\"" : "").">".$N."</span>");
+					$LU->addItemStyle("cursor:move;".($strike ? "text-decoration:line-through;" : ""));
+					$LU->addItemData("field", $A);
+				}
+			}
+			
+			$LA = new HTMLList();
+			$LA->setListID($name."available");
+			
+			foreach($available AS $A){
+				$strike  = false;
+				
+				$N = $A;
+				if(self::$instance->A("label".$A))
+					$N = self::$instance->A("label".$A);
+				
+				if($name == "orderRechnungsInfo" AND !self::$instance->A("label".$A) AND !in_array($A, $noStrike))
+					$strike = true;
+					
+				if($name == "orderRechnungsInfo" AND in_array($A, $doStrike))
+					$strike = true;
+				
+				if(($name == "orderColsPrice" OR $name == "orderCols") AND !self::$instance->A("width".$A) AND !in_array($A, $noStrike))
+					$strike = true;
+
+				if(($name == "orderColsPrice" OR $name == "orderCols") AND in_array($A, $doStrike))
+					$strike = true;
+
+				if(isset($lab[$A]))
+					$N = $lab[$A];
+				
+				$B = new Button("Element löschen", "trash_stroke", "iconic");
+				$B->style("float:right;margin-right:10px;display:none;");
+				$B->onclick("\$j(this).parent().remove();");
+				
+				$LA->addItem($B."<span ".($strike ? "title=\"Eintrag wurde ausgeblendet\"" : "").">".$N."</span>");
+				$LA->addItemStyle("cursor:move;".($strike ? "text-decoration:line-through;" : ""));
+				$LA->addItemData("field", $A);
+			}
+			
+			echo "<div style=\"width:50%;display:inline-block;vertical-align:top;\" class=\"backgroundColor2\">$LU</div><div class=\"backgroundColor4\" style=\"vertical-align:top;width:50%;display:inline-block;\">$LA</div>";
+			
+			echo OnEvent::script("
+				\$j( '#{$name}used' ).sortable({
+					revert: true,
+					receive: function(event, ui){
+						\$j(\$j(this).data().uiSortable.currentItem).find('.iconic').show();
+					}
+				}).disableSelection();
+				
+				\$j( '#{$name}available li' ).draggable({
+					connectToSortable: '#{$name}used',
+					helper: 'clone',
+					revert: 'invalid'
+				}).disableSelection();");
+		}
+		
+		$B = new Button("Änderungen speichern", "bestaetigung");
+		$B->style("float:right;margin:10px;");
+		$B->onclick("var t = ''; \$j('.usedFields').each(function(k, v){ var fields = []; \$j(v).find('li').each(function(k, v){ fields.push(\$j(v).data('field')); }); t = t+\$j(v).data('name')+':'+fields.join(',')+';'; }); ".OnEvent::rme($this, "saveSubOrder", array("t"), OnEvent::reload("Left").OnEvent::closePopup("Vorlage")));
+		echo "</div>";
+		echo $B."<div style=\"clear:both;\"></div>";
+	}
+	
 	public function getSubPopup($find){
 		$fields = $this->getSub($find);
 		$attributes = $this->getAttributes();
 		
-		if(count($attributes) == 0 AND extension_loaded("eAccelerator")){
-			if(is_writable(Util::getRootPath()) AND !file_exists(Util::getRootPath().".htaccess")){
-				file_put_contents(Util::getRootPath().".htaccess", "php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0");
-				echo OnEvent::script(OnEvent::reloadPopup("Vorlage"));
-				die();
-			}
-			
-			$T = new HTMLTable(1);
-			
-			$B = new Button("", "warning", "icon");
-			$B->style("float:left;margin-right:10px;");
-			
-			$T->addRow(array($B."Das System kann die Liste der Optionen nicht auslesen. Bitte erstellen Sie im Verzeichnis <code>".Util::getRootPath()."</code> eine Datei Namens <b>.htaccess</b> mit folgenden Inhalt:<br /><br /><pre style=\"font-size:12px;padding:5px;\">php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0</pre>"));
-			$T->setColClass(1, "highlight");
-			die($T);
-		}
+		$this->check($attributes);
 		
 		$initFields = array("subFind");
 		
@@ -478,7 +675,7 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		}
 		
 		if($find == "show")
-			$fields = array_merge (array("language"), $fields);
+			$fields = array_merge (array("language", "currency", "currencyUseSymbol"), $fields);
 		
 		
 		$newData = $this->A("Vorlage".ucfirst($find));
@@ -490,9 +687,15 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 		$F->getTable()->setColWidth(1, 120);
 		
 		if($find == "background"){
+			$F->insertField("before", "backgroundFileNameSecondPage", "upload2");
 			$F->insertSpaceAbove("upload", "Hintergrund");
+			$F->insertSpaceAbove("upload2", "Hintergrund ab Seite 2");
+			
 			$F->setType("upload", "file");
+			$F->setType("upload2", "file");
+			
 			$F->addJSEvent("upload", "onChange", "contentManager.rmePCR('Vorlage', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#FormVorlageneditor input[name=backgroundFileName]').val(fileName); });");
+			$F->addJSEvent("upload2", "onChange", "contentManager.rmePCR('Vorlage', '".$this->getID()."', 'processBackground', [fileName], function(){ alert('Upload erfolgreich'); \$j('#FormVorlageneditor input[name=backgroundFileNameSecondPage]').val(fileName); });");
 		}
 		
 		if($find == "append"){
@@ -564,6 +767,9 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			if($type == "array" AND count(self::$instance->A($name)) == 3)
 				$parser = "VorlageGUI::parserFont";
 			
+			if($type == "array" AND count(self::$instance->A($name)) == 3 AND strpos($name, "color") === 0)
+				$parser = "VorlageGUI::parserColor";
+			
 			if($type == "boolean")
 				$parser = "VorlageGUI::parserShow";
 			
@@ -623,6 +829,30 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			, $changes);*/
 		
 		$this->changeA("VorlageStammdaten", $changes);
+		$this->saveMe();
+	}
+	
+	public function check($attributes){
+		if(count($attributes) == 0 AND extension_loaded("eAccelerator")){
+			if(is_writable(Util::getRootPath()) AND !file_exists(Util::getRootPath().".htaccess")){
+				file_put_contents(Util::getRootPath().".htaccess", "php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0");
+				echo OnEvent::script(OnEvent::reloadPopup("Vorlage"));
+				die();
+			}
+			
+			$T = new HTMLTable(1);
+			
+			$B = new Button("", "warning", "icon");
+			$B->style("float:left;margin-right:10px;");
+			
+			$T->addRow(array($B."Das System kann die Liste der Optionen nicht auslesen. Bitte erstellen Sie im Verzeichnis <code>".Util::getRootPath()."</code> eine Datei Namens <b>.htaccess</b> mit folgenden Inhalt:<br /><br /><pre style=\"font-size:12px;padding:5px;\">php_flag eaccelerator.enable 0\nphp_flag eaccelerator.optimizer 0</pre>"));
+			$T->setColClass(1, "highlight");
+			die($T);
+		}
+	}
+	
+	public function saveSubOrder($data){
+		$this->changeA("VorlageOrder", $data);
 		$this->saveMe();
 	}
 	
@@ -763,6 +993,69 @@ class VorlageGUI extends Vorlage implements iGUIHTML2 {
 			$B = "";
 		
 		return "$B<small>".$html."</small>";
+	}
+	
+	public static function parserOrder($w, $l, $E){
+		if($w == "" OR $w == "[]")
+			return "<small>Keine Änderungen</small>";
+		
+		$html = "";
+		$attributes = self::getAttributes();
+		
+		$ex = explode(";", trim($w, ";"));
+		foreach($ex AS $D){
+			
+			$ex2 = explode(":", $D);
+			$doc = $attributes[$ex2[0]]->getDocComment();
+			preg_match_all("/@label (.*)\n/", $doc, $labels);
+			
+			if($ex2[1])
+				$html .= ($html != "" ? ", " : "").$labels[1][0]."";
+		}
+		
+		$B = new Button("Änderungen löschen", "./images/i2/delete.gif", "icon");
+		$B->style("float:right;");
+		$B->rmePCR("Vorlage", $E->getID(), "clearChanges", "VorlageOrder", OnEvent::reload("Left"));
+		if(self::$locked)
+			$B = "";
+		
+		if(!trim($html))
+			return "<small>Keine Änderungen</small>";
+		
+		return "$B<small>".$html."</small>";
+	}
+	
+	public static function parserColor($w, $l, $p){
+		$r = $p[0];
+		$g = $p[1];
+		$b = $p[2];
+		if(is_array($w))
+			foreach($w AS $fieldValue){
+				if($fieldValue->name == $p[3]."0")
+					$r = $fieldValue->value;
+
+				if($fieldValue->name == $p[3]."1")
+					$g = $fieldValue->value;
+
+				if($fieldValue->name == $p[3]."2")
+					$b = $fieldValue->value;
+			}
+		
+		
+		$IS = new HTMLInput($p[3]."0", "hidden", $r);
+		$IS->style("width:30px;font-size:10px;text-align:right;");
+		
+		$IW = new HTMLInput($p[3]."1", "hidden", $g);
+		$IW->style("width:30px;margin-left:5px;font-size:10px;text-align:right;");
+		
+		$IH = new HTMLInput($p[3]."2", "hidden", $b);
+		$IH->style("width:40px;margin-left:5px;font-size:10px;text-align:right;");
+		
+		$IC = new HTMLInput("$p[3]c", "color", Util::rgb2hex(array($r, $g, $b)));
+		$IC->onchange("\$j('[name=$p[3]0]').val(Util.hexToRgb(this.value).r); \$j('[name=$p[3]1]').val(Util.hexToRgb(this.value).g); \$j('[name=$p[3]2]').val(Util.hexToRgb(this.value).b);");
+		$IC->style("border:0px;background-color:transparent;");
+		
+		return $IS.$IW.$IH.$IC;
 	}
 	
 	public static function parserFont($w, $l, $p){

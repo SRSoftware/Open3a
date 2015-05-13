@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class HTMLGUIX {
 
@@ -85,12 +85,17 @@ class HTMLGUIX {
 	protected $useScreenHeight = false;
 	protected $hiddenJS = "";
 	protected $tableWeight;
+	protected $placeholders = array();
 	
 	public function __construct($object = null, $collectionName = null){
 		if($object != null)
 			$this->object($object, $collectionName);
 
 		$this->languageClass = $this->loadLanguageClass("HTML");
+	}
+	
+	public function placeholder($fieldName, $value){
+		$this->placeholders[$fieldName] = $value;
 	}
 	
 	public function tableWeight($weight){
@@ -234,6 +239,10 @@ class HTMLGUIX {
 
 		return $B;
 	}
+	
+	public function addSideRow($content){
+		$this->sideButtons[] = $content;
+	}
 
 	/**
 	 * 
@@ -300,7 +309,7 @@ class HTMLGUIX {
 		} elseif(!$this->hiddenUseInit)
 			$this->hideLine($showOnTrue);
 		
-		$this->addFieldEvent($fieldName, "onChange", "contentManager.toggleFormFieldsTest((".  str_replace("OR", "||", $test)."), [".(count($showOnTrue) > 0 ? "'".implode("','", $showOnTrue)."'" : "")."], [".($showOnFalse != null ? "'".implode("','", $showOnFalse)."'" : "")."], 'edit".get_class($this->object)."', ".($this->hiddenUseInit ? "true" : "false").");");
+		$this->addFieldEvent($fieldName, "onChange", "contentManager.toggleFormFieldsTest((".  str_replace("OR", "||", $test)."), [".(count($showOnTrue) > 0 ? "'".implode("','", $showOnTrue)."'" : "")."], [".($showOnFalse != null ? "'".implode("','", $showOnFalse)."'" : "")."], '".($this->formID ? $this->formID : "edit".get_class($this->object))."', ".($this->hiddenUseInit ? "true" : "false").");");
 		
 		$this->hiddenJS .= "\$j('[name=$fieldName]').trigger('change');";
 	}
@@ -394,7 +403,7 @@ class HTMLGUIX {
 
 		if($DM == "popupN")
 			$this->addToEvent("onSave", "/*ADD*/ Popup.close('".$this->object->getClearClass("GUI")."', 'edit');");
-		
+				
 		if($DM == "popupS")
 			$this->addToEvent("onSave", "/*ADD*/ contentManager.reloadFrame('contentScreen'); Popup.close('".$this->object->getClearClass("GUI")."', 'edit');");
 
@@ -593,6 +602,9 @@ class HTMLGUIX {
 		foreach($this->labels AS $n => $l)
 			$F->setLabel($n, T::_($l));
 
+		foreach($this->placeholders AS $n => $l)
+			$F->setPlaceholder($n, $l);
+		
 		foreach($this->descriptionsField AS $n => $l)
 			$F->setDescriptionField($n, T::_($l));
 
@@ -633,9 +645,11 @@ class HTMLGUIX {
 		if($this->requestFocus)
 			$requestFocus = OnEvent::script("setTimeout(function(){ var target1 = \$j('input[name=".$this->requestFocus[0]."]:visible, textarea[name=".$this->requestFocus[0]."]:visible'); if(target1.length > 0) target1.focus(); ".($this->requestFocus[1] != null ? "else \$j('input[name=".$this->requestFocus[1]."]:visible, textarea[name=".$this->requestFocus[1]."]:visible').focus();" : "")."}, 100);");
 		
+		$prepended = "";
+		foreach($this->prepended AS $p)
+			$prepended .= $p;
 		
-		
-		return $this->topButtons().$this->sideButtons().$F.$requestFocus.GUIFactory::editFormOnchangeTest($this->formID == null ? "edit".get_class($this->object) : $this->formID).($this->hiddenJS != "" ? OnEvent::script($this->hiddenJS." \$j('#$this->formID .recentlyChanged').removeClass('recentlyChanged');") : "");
+		return $prepended.$this->topButtons().$this->sideButtons().$F.$requestFocus.GUIFactory::editFormOnchangeTest($this->formID == null ? "edit".get_class($this->object) : $this->formID).($this->hiddenJS != "" ? OnEvent::script($this->hiddenJS." \$j('#$this->formID .recentlyChanged').removeClass('recentlyChanged');") : "");
 	}
 
 	/**
@@ -647,6 +661,10 @@ class HTMLGUIX {
 	// <editor-fold defaultstate="collapsed" desc="getBrowserHTML">
 	function getBrowserHTML($lineWithId = -1, $useBPS = true){
 		T::load(Util::getRootPath()."libraries");
+		
+		$canDelete = mUserdata::isDisallowedTo("cantDelete".$this->className);
+		if(!$canDelete)
+			$this->showTrash = false;
 		
 		$bps = BPS::getAllProperties("m".$this->className."GUI");
 		if(!$useBPS)
@@ -693,7 +711,7 @@ class HTMLGUIX {
 		if($this->useScreenHeight)
 			$Tab->useScreenHeight();
 		
-		if($this->header != null)
+		if($this->header != null AND $this->object->numLoaded() > 0)
 			$Tab->addHeaderRow($this->header);
 		
 		if($lineWithId == -1) {
@@ -956,11 +974,27 @@ class HTMLGUIX {
 				$name = "DefaultValue".$class->getClearClass()."$par1";
 				if(mb_strlen($name) > 50)
 					$name = "DV".sha1($name);
-				
-				$B->rme("mUserdata","","setUserdata",array("'$name'","\$j('[name=$par1]').val()"),"checkResponse(transport);");
+				if($this->types[$par1] != "checkbox")
+					$B->rme("mUserdata","","setUserdata",array("'$name'","\$j('[name=$par1]').val()", "''", "0", "1"),"checkResponse(transport);");
+				else
+					$B->rme("mUserdata","","setUserdata",array("'$name'","\$j('[name=$par1]').prop('checked') ? 1 : 0", "''", "0", "1"),"checkResponse(transport);");
+					
 				$B->style("float:right;");
 				#$this->inputStyle($par1, "width:90%;");
 				#$this->buttonsNextToFields[$par1] = $B;
+				$this->addFieldButton($par1, $B);
+			break;
+			
+			case "addAnotherLanguageButton":
+				$B = new Button("andere Sprachen", "./images/i2/sprache.png", "icon");
+				if($class->getID() != -1)
+					$B->popup("", "Alternative Sprachen", "mMultiLanguage", "", "getPopupHTML", array("'".$class->getClearClass()."'","'".$class->getID()."'","'".$par1."'"));
+					#$B->rme("mMultiLanguage","","getPopupHTML",array("'".$class->getClearClass()."'","'".$class->getID()."'","'".$par1."'"),"Popup.create(\'".$class->getID()."\', \'altLang".$class->getClearClass()."\', \'alternative Sprachen\'); Popup.update(transport, \'".$class->getID()."\', \'altLang".$class->getClearClass()."\');");
+				else
+					$B->onclick("alert('Sie müssen den Artikel zuerst speichern, bevor Sie Übersetzungen eintragen können')");
+
+				$B->style("float:right;");
+				#$this->setInputStyle($par1,"width:90%;");
 				$this->addFieldButton($par1, $B);
 			break;
 		}
