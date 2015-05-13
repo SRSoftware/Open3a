@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class HTMLTable extends UnifiedTable implements iUnifiedTable  {
 	private $colStyles = array();
@@ -129,6 +129,17 @@ class HTMLTable extends UnifiedTable implements iUnifiedTable  {
 	}
 	
 	function setColWidth($colNumber, $width){
+		$this->colWidth[$colNumber] = $width.((strpos($width, "px") === false AND strpos($width, "%") === false) ? "px": "");
+	}
+	
+	function addColWidth($colNumber, $width){
+		if(!isset($this->colWidth[$colNumber]))
+			$this->colWidth[$colNumber] = 0;
+		
+		$oldWidth = str_replace(array("px", "%"), "", $this->colWidth[$colNumber]);
+		
+		$width += $oldWidth;
+		
 		$this->colWidth[$colNumber] = $width.((strpos($width, "px") === false AND strpos($width, "%") === false) ? "px": "");
 	}
 

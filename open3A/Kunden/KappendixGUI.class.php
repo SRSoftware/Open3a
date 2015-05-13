@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 	public $showAttributes = array(
@@ -65,6 +65,33 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 
 		if(Session::isPluginLoaded("mexportLexware") OR Session::isPluginLoaded("mexportDatev"))
 			$gui->insertAttribute("after", "UStIdNr", "KappendixErloeskonto");
+		
+		if(Session::isPluginLoaded("mPreisgruppe")){
+			$gui->insertAttribute ("after", "UStIdNr", "KappendixPreisgruppe");
+			$gui->setLabel("KappendixPreisgruppe", "Preisgruppe");
+			$gui->setType("KappendixPreisgruppe", "select");
+			$gui->setOptions("KappendixPreisgruppe", array(0, 1, 2, 3, 4, 5, 6, 7, 8), array("Keine", 1, 2, 3, 4, 5, 6, 7, 8));
+		}
+		
+		if(Session::isPluginLoaded("mZahlungsart")){
+			$gui->insertAttribute ("after", "UStIdNr", "KappendixRZahlungsart");
+			$gui->setLabel("KappendixRZahlungsart", "Zahlungsart");
+			$gui->setType("KappendixRZahlungsart", "select");
+			
+			$Z = GRLBM::getPaymentVia();
+			$N = array("" => "Standard");
+			foreach($Z AS $k => $ZA){
+				$TB = Zahlungsart::getTB($k);
+				if($TB != null)
+					$N[$k] = $ZA." (TB: ".$TB->A("label").")";
+				else
+					$N[$k] = $ZA." (kein TB)";
+			}
+			
+			
+			$gui->setOptions("KappendixRZahlungsart", array_keys($N), array_values($N));
+			
+		}
 		
 		$gui->setType("AdresseID","hidden");
 		$gui->setType("bemerkung","textarea");
@@ -240,6 +267,7 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 			$F->setLabel($grlbms[$i]."TextbausteinUnten","TB unten");
 			$F->setType($grlbms[$i]."TextbausteinUnten","select", null, $T);
 			
+			
 			$tb = new Textbausteine();
 			list($keys, $values) = $tb->getTBs("zahlungsbedingungen", $grlbms[$i]);
 			$T = array("0" => "Standard verwenden");
@@ -247,11 +275,19 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 			
 			$F->setLabel($grlbms[$i]."Zahlungsbedingungen","ZahlBed.");
 			$F->setType($grlbms[$i]."Zahlungsbedingungen","select", null, $T);
+			
+			if(Session::isPluginLoaded("mZahlungsart") AND $grlbms[$i] == "R"){
+				$F->setType($grlbms[$i]."Zahlungsbedingungen", "parser", null, array("KappendixGUI::parserTBR"));
+			}
 		}
 		
 		$F->setSaveClass("Kappendix", $this->getID(), "function(){ ".OnEvent::closePopup("Kappendix")." }");
 		
 		echo $F;
+	}
+	
+	public static function parserTBR(){
+		return "Festgelegt durch Zahlungsart";
 	}
 
 	public static function parserProvBaseValue($w, $l, $p){

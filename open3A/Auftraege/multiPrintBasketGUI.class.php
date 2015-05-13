@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class multiPrintBasketGUI extends UnpersistentClass implements iGUIHTML2 {
 
@@ -388,7 +388,7 @@ class multiPrintBasketGUI extends UnpersistentClass implements iGUIHTML2 {
 		$i = 0;
 		while(($t = $gs->getNextEntry())){
 			if($i++ != 0)
-				$pdf->AddPage('',true);
+				$pdf->AddPage('', true);
 			
 			#$_SESSION["BPS"]->registerClass("Brief");
 			#$_SESSION["BPS"]->setProperty("Brief","GRLBMID",$t->getID());
@@ -402,7 +402,7 @@ class multiPrintBasketGUI extends UnpersistentClass implements iGUIHTML2 {
 			$pdf->nbTag = "{nb$i}";
 			$A = new AuftragGUI($AuftragID);
 			$A->getGRLBMPDF($copy, $pdf, $t->getID());
-			$pdf->addReplacement("{nb$i}",$pdf->PageNo());
+			$pdf->addReplacement("{nb$i}", $pdf->PageNo());
 		}
 		
 		$filename = $brief->getMultiDruckOutput(true);

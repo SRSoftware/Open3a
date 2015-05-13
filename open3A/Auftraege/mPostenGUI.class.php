@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 
@@ -86,8 +86,8 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$message = array();
 		$message["R"] = "Diese Rechnung wurde als bezahlt makiert und kann daher nicht mehr bearbeitet werden.";
 		$message["G"] = "Diese Gutschrift wurde als bezahlt makiert und kann daher nicht mehr bearbeitet werden.";
-		$message["B"] = "Für dieses Angebot wurde eine Auftragsbestätigung erstellt. Die Posten können daher nicht mehr verändert werden.";
-		$message["A"] = $message["B"];
+		$message["B"] = "Diese Auftragsbestätigung wurde gesperrt.";
+		$message["A"] = "Für dieses Angebot wurde eine Auftragsbestätigung erstellt. Die Posten können daher nicht mehr verändert werden.";
 
 		if($bps["GRLBMType"] == "Kalk" AND $view < 3) $view = 3;
 		#print_r($this->getMyBPSData());
@@ -97,7 +97,8 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$PostenAttributes = $tempPosten->newAttributes();
 		
 		//Be sure this field exists else the Rechnung will show 0,00€ total
-		if(!isset($PostenAttributes->bruttopreis)) throw new FieldDoesNotExistException("bruttopreis","");
+		if(!isset($PostenAttributes->bruttopreis))
+			throw new FieldDoesNotExistException("bruttopreis","");
 		
 		unset($tempPosten);
 		$PostenAttributes = PMReflector::getAttributesArrayAnyObject($PostenAttributes);
@@ -163,7 +164,8 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$BOP = new Button("Operationen", "wrench", "iconicG");
 		$BOP->onclick("phynxContextMenu.start(this, 'mPosten','100:$bps[loadGRLBMID]','Optionen anzeigen:');");
 		$BOP->style("margin-top:5px;margin-left:5px;");
-		$html = "<div style=\"clear:right;padding-top:60px;\" class=\"prettySubtitle\">Posten von ".$GRLBM->A("prefix").$GRLBM->A("nummer")."$BOP</div>$T<div class=\"Tab backgroundColor1\" style=\"font-weight:bold;\"><p>".Stammdaten::getLongType($bps["GRLBMType"],true)."posten:"."</p></div>";
+
+		$html = Aspect::joinPoint("prepend", $this, __METHOD__, $MArgs, "")."<div style=\"clear:right;padding-top:60px;\" class=\"prettySubtitle\">Posten von ".$GRLBM->A("prefix").$GRLBM->A("nummer")."$BOP</div>$T<div class=\"Tab backgroundColor1\" style=\"font-weight:bold;\"><p>".Stammdaten::getLongType($bps["GRLBMType"],true)."posten:"."</p></div>";
 
 		#$tabC1 = new HTMLTable(2);
 		#$tabC1->addTableClass("AuftragBelegContent");
@@ -391,13 +393,20 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			if(is_array($postenButtons))
 				$postenButtons = implode("", $postenButtons);
 
+			if($t->A("PostenHasKalkulation")){
+				$B = new Button("Kalkulation anzeigen", "./ubiquitous/PostenKalkulation/showKalkulation.png", "icon");
+				$B->style("float:right;margin-right:10px;");
+				$B->popup("", "Kalkulation", "mPostenKalkulation", "-1", "getKalkulation", array("'GRLBM'", $t->A("GRLBMID"), "", $t->getID()), "", "{hPosition: 'center', width:1000, top:30, blackout: true}");
+				$postenButtons .= $B;
+			}
+			
 			#<img style=\"float:right;\" class=\"calendarIcon mouseoverFade\" style=\"margin-right:0px;\" src=\"./images/i2/delete.gif\" onclick=\"\"/>
-			$BSettings = new Button("Optionen","./images/i2/settings.png", "icon");
+			/*$BSettings = new Button("Optionen","./images/i2/settings.png", "icon");
 			$BSettings->className("postenOptionsButton");
 			$BSettings->style("float:right;margin-right:20px;");
 			$BSettings->onclick("if($('optionsPosten".$t->getID()."').style.display == 'none') $('optionsPosten".$t->getID()."').style.display = ''; else $('optionsPosten".$t->getID()."').style.display = 'none';");
 			if(!$postenOptions["fold"])
-				$BSettings = "";
+				$BSettings = "";*/
 
 			$BTrash = new Button("Posten löschen","./images/i2/delete.gif");
 			$BTrash->type("icon");
@@ -436,10 +445,11 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			/**
 			 * ROW 2
 			 */
-			$TP->addRow(array($BEdit.$BTrash.$postenButtons));
+			$TP->addRow(array($postenButtons));
 			$TP->addRowColspan(1, 4);
 			$TP->setRowID("optionsPosten".$t->getID());
-			$TP->addRowStyle(!$postenOptions["fold"] ? "" : "display:none;");
+			$TP->addRowStyle(trim($postenButtons) == "" ? "display:none;" : "");
+			$TP->addCellStyle(1, "padding-right:10px;");
 			#$TP->addRowClass("backgroundColor0");
 			
 			/**
@@ -447,7 +457,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			 */
 			$TP->addRow(array("
 					<div id=\"posNr".$t->getID()."\">".$positionsNummern[$t->getID()]."</div>",
-					"$BSettings
+					"$BEdit$BTrash
 					<input
 						style=\"width:90%;text-align:left;font-weight:bold;\"
 						class=\"multiEditInput2 postenNameInput\"
@@ -479,8 +489,9 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			$IVK->id("VKsID".$t->getID());
 			
 			$IMenge = new HTMLInput("menge", "text", $ta->menge);
-			$IMenge->activateMultiEdit("Posten", $t->getID(), "function(){ Auftrag.updateNettoBrutto(".$t->A("GRLBMID").", ".$t->getID()."); }");
+			$IMenge->activateMultiEdit("Posten", $t->getID(), "function(t){ Auftrag.checkBestand(t); Auftrag.updateNettoBrutto(".$t->A("GRLBMID").", ".$t->getID()."); }");
 			$IMenge->setClass("multiEditInput2");
+			$IMenge->style("width:90px;");
 			if($ta->PostenUsedSerials != "[]" AND $ta->PostenUsedSerials != "")
 				$IMenge->isDisabled (true);
 			#<input 
@@ -494,7 +505,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			$TP->addRow(array("",
 				"M: $IMenge ".Aspect::joinPoint("postenDetails", $this, __METHOD__, array($t), "").(($this->showRabatt AND $showPrices) ? "<span style=\"float:right;margin-left:5px;\">P: $IPreis</span>".CustomizerRabatt::getInput($t) : "<span style=\"color:grey;\">".$t->A("gebinde")."</span>"),
 				($showPrices ? ($this->showRabatt ? "VK: $IVK" : "P: $IPreis") : ""),
-				"<span style=\"color:grey;\">".Util::CLFormatNumber($ta->mwst*1, 2, false, false)."%</span>"));
+				"<span style=\"".($t->A("mwstCheck") ? "color:red;font-weight:bold;" : "color:grey;")."\">".Util::CLFormatNumber($ta->mwst*1, 2, false, false)."%</span>"));
 			$TP->addCellStyle(4, "text-align:right;");
 			$TP->setRowID("PostenDisplayD".$t->getID()."2");
 			#$TP->addRowClass("backgroundColor0");

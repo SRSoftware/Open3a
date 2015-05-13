@@ -15,10 +15,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
-var cookieManager = {
+/**var cookieManager = {
 	getCookie: function(cookieName) {
 		var cs = document.cookie.split("; ");
 		for(var i = 0;i<cs.length;i++){
@@ -28,7 +28,7 @@ var cookieManager = {
 		
 		return -1;
 	}
-}
+}*/
 
 Ajax.Responders.register({
 	onCreate: function(){
@@ -287,8 +287,13 @@ function saveMultiEditInput(classe, eid, feld, onsuccessFunction){
 	onSuccess: function(transport) {
 		if(checkResponse(transport)){
 			//if(transport.responseText.search(/^message:/) == -1) showMessage(transport.responseText);
+
+			if(transport.responseText.charAt(0) == "{" && transport.responseText.charAt(transport.responseText.length - 1) == "}")
+				transport.responseData = jQuery.parseJSON(transport.responseText);
 			
-			if(typeof onsuccessFunction != "undefined" && onsuccessFunction != "") onsuccessFunction(transport);
+	
+			if(typeof onsuccessFunction != "undefined" && onsuccessFunction != "")
+				onsuccessFunction(transport);
 		}
 	}});
 }

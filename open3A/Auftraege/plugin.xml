@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
 -->
 <phynx>
 	<plugin>
@@ -26,7 +26,7 @@
 		<icon>./images/navi/edit.png</icon>
 		<folder>Auftraege</folder>
 		
-		<version>2.1</version>
+		<version>2.2</version>
 		
 		<doSomethingElse>doSomethingElse</doSomethingElse>
 		<javascript>Auftrag.js</javascript>

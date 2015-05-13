@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 abstract class exportDefault implements iGUIHTML2 {
 	protected $filename;
@@ -25,20 +25,20 @@ abstract class exportDefault implements iGUIHTML2 {
 		$T = new HTMLTable(1, $this->getLabel());
 
 		$BCSV = new Button("CSV","export");
-		$BCSV->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", "CSVExport");
+		$BCSV->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", array("'CSVExport'", "\$j('#exportSubset [name=start]').length ? \$j('#exportSubset [name=start]').val() : ''", "\$j('#exportSubset [name=anzahl]').length ? \$j('#exportSubset [name=anzahl]').val() : ''"));
 		$BCSV->style("float:right;");
 
 		$BXML = new Button("XML","export");
-		$BXML->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", "XML");
+		$BXML->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", array("'XML'", "\$j('#exportSubset [name=start]').length ? \$j('#exportSubset [name=start]').val() : ''", "\$j('#exportSubset [name=anzahl]').length ? \$j('#exportSubset [name=anzahl]').val() : ''"));
 
 		$T->addRow($BCSV.$BXML);
 
 
 		$BHTML = new Button("HTML","export");
-		$BHTML->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", "HTMLTable");
+		$BHTML->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", array("'HTMLTable'", "\$j('#exportSubset [name=start]').length ? \$j('#exportSubset [name=start]').val() : ''", "\$j('#exportSubset [name=anzahl]').length ? \$j('#exportSubset [name=anzahl]').val() : ''"));
 
 		$BXLS = new Button("Excel","./open3A/Export/excelExport.png");
-		$BXLS->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", "ExcelExport");
+		$BXLS->windowRme(str_replace("GUI", "",get_class($this)), "", "getExportData", array("'ExcelExport'", "\$j('#exportSubset [name=start]').length ? \$j('#exportSubset [name=start]').val() : ''", "\$j('#exportSubset [name=anzahl]').length ? \$j('#exportSubset [name=anzahl]').val() : ''"));
 		$BXLS->style("float:right;");
 
 		$T->addRow($BXLS.$BHTML);
@@ -50,8 +50,8 @@ abstract class exportDefault implements iGUIHTML2 {
 
 	protected abstract function entryParser(PersistentObject $entry);
 
-	public function getExportData($type){
-		$C = $this->getExportCollection();
+	public function getExportData($type, $start, $count){
+		$C = $this->getExportCollection($start, $count);
 
 		while($t = $C->getNextEntry())
 			$this->entryParser($t);

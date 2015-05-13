@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class PersistentObject {
 	protected $ID;
@@ -23,6 +23,9 @@ class PersistentObject {
 	protected $AA = null;
 	protected $Adapter = null;
 	protected $storage = PHYNX_MAIN_STORAGE;#"MySQL";
+	/**
+	 * @deprecated since version 20141218
+	 */
 	protected $noDeleteHideOnly = false;
 
 	protected $languageClass;
@@ -58,6 +61,10 @@ class PersistentObject {
 		return $id;
 	}
 	
+	/**
+	 * @deprecated since version 20141218
+	 * @return boolean
+	 */
 	public function isNoDelete(){
 		return $this->noDeleteHideOnly;
 	}
@@ -224,7 +231,7 @@ class PersistentObject {
 	public function customize(){
 		if(defined("PHYNX_FORBID_CUSTOMIZERS"))
 			return;
-		
+
 		try {
 			$active = mUserdata::getGlobalSettingValue("activeCustomizer");
 
@@ -341,7 +348,7 @@ class PersistentObject {
 	protected function getJSON(){
 		$this->loadMe();
 
-		return json_encode($this->A);
+		return json_encode($this->A, defined("JSON_UNESCAPED_UNICODE") ? JSON_UNESCAPED_UNICODE : 0);
 	}
 }
 

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class UserGUI extends User implements iGUIHTML2 {
 	function getHTML($id){
@@ -108,6 +108,7 @@ class UserGUI extends User implements iGUIHTML2 {
 		$mUD->addAssocV3("typ","=","hideF","OR","1");
 		$mUD->addAssocV3("typ","=","pSpec","OR","1");
 		$mUD->addAssocV3("typ","=","pHide","OR","1");
+		$mUD->addAssocV3("typ","=","loginTo","OR","1");
 		$html = "<div>".$mUD->getHTML(-1)."</div>";
 		if($id == -1) $html = "<table><tr><td class=\"backgroundColor3\">Sie können Einschränkungen erst anlegen, wenn der Benutzer gespeichert wurde.</td></tr></table>";
 		return $gui->getEditHTML().(($this->A->isAdmin != 1) ? $html :"");

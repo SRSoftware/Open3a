@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Users extends anyC {
 	function __construct(){
@@ -24,33 +24,39 @@ class Users extends anyC {
 		$this->customize();
 	}
 
-	public static function getUsers(){
+	public static function getUsers($type = 0){
 		if(mUserdata::getGlobalSettingValue("AppServer", "") != ""){
 			$U = new Users();
 			$U->getAppServerUsers();
 		} else {
 			$U = new Users();
 			$U->addAssocV3("isAdmin", "=", "0");
+			$U->addAssocV3("UserType", "=", $type);
 		}
 
 		return $U;
 	}
 
-	public static function login($username, $password, $application, $language = "default"){
+	public static function login($username, $password, $application, $language = "default", $isCustomerPage = false){
 		$U = new Users();
-		return $U->doLogin(array("loginUsername" => $username, "loginSHAPassword" => $password, "anwendung" => $application, "loginSprache" => $language)) > 0;
+		return $U->doLogin(array("loginUsername" => $username, "loginSHAPassword" => $password, "anwendung" => $application, "loginSprache" => $language, "isCustomerPage" => $isCustomerPage)) > 0;
 	}
 	
 	public function getUser($username, $password, $isSHA = false){
-		if($password == ";;;-1;;;") return null;
+		if($password == ";;;-1;;;")
+			return null;
 		
 		$user = $this->getAppServerUser($username, !$isSHA ? sha1($password) : $password);
-		if($user != null) return $user;
+		if($user != null)
+			return $user;
 
 		$this->addAssocV3("username","=",$username);
-		if(!$isSHA) $this->addAssocV3("SHApassword","=",sha1($password),"AND","1");
-		else $this->addAssocV3("SHApassword","=",$password,"AND","1");
+		if(!$isSHA)
+			$this->addAssocV3("SHApassword","=",sha1($password),"AND","1");
+		else
+			$this->addAssocV3("SHApassword","=",$password,"AND","1");
 		$this->addAssocV3("password","=",$password,"OR","1");
+		$this->addAssocV3("UserType", "=", "0");
 
 		$user = $this->getNextEntry();
 		if($user != null) return $user;
@@ -209,6 +215,21 @@ class Users extends anyC {
 			if($U->A("allowedApplications") != null AND is_array($U->A("allowedApplications")) AND !in_array($p["anwendung"], $U->A("allowedApplications")))
 				return 0;
 
+			
+			$AC = anyC::get("Userdata", "name", "loginTo".((isset($p["isCustomerPage"]) AND $p["isCustomerPage"]) ? "customerPage" : $p["anwendung"]));
+			$AC->addAssocV3("UserID", "=", $U->getID());
+			$UD = $AC->n();
+			if($UD != null AND $UD->A("wert") == "0")
+				return 0;
+			
+			/*$AC = anyC::get("Userdata", "name", "loginToApplication");
+			$AC->addAssocV3("UserID", "=", $U->getID());
+			$UD = $AC->n();
+			if($UD != null AND $UD->A("wert") == "0")
+				return 0;*/
+			
+			$UA = $U->getA();
+			
 		} catch (Exception $e){
 			if($p["loginUsername"] == "Admin" AND $p["loginSHAPassword"] == "4e7afebcfbae000b22c7c85e5560f89a2a0280b4"){#"Admin"){
 				$tu = new User(-1);
@@ -216,7 +237,9 @@ class Users extends anyC {
 				$UA->name = "Installations-Benutzer";
 				$UA->username = "Admin";
 				$UA->password = "Admin";
-				if($p["loginSprache"] != "default") $UA->language = $p["loginSprache"];
+				if($p["loginSprache"] != "default")
+					$UA->language = $p["loginSprache"];
+				
 				$UA->isAdmin = 1;
 				$U = new User(-1);
 				$U->setA($UA);

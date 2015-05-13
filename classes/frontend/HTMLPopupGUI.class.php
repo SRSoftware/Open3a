@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class HTMLPopupGUI {
 	private $object;
@@ -85,7 +85,7 @@ class HTMLPopupGUI {
 		$TE = new HTMLTable($cols, "Einträge");
 		if($this->showTrash)
 			$TE->setColWidth(1, 20);
-		
+
 		if($this->showEdit){
 			$TE->setColWidth($cols, 20);
 			$TE->useForSelection(false);
@@ -104,9 +104,22 @@ class HTMLPopupGUI {
 			$BD->onclick("deleteClass('".get_class($A)."','".$A->getID()."', function() { ".OnEvent::reloadPopup($this->object->getClearClass())." },'Eintrag wirklich löschen?');");
 
 			$isEmpty = false;
-			if($this->emptyCheckField != null AND $A->A($this->emptyCheckField) == ""){
+			if($this->emptyCheckField != null AND !is_array($this->emptyCheckField) AND $A->A($this->emptyCheckField) == ""){
 				$autoLoad = $action;
 				$isEmpty = true;
+			}
+			
+			if($this->emptyCheckField != null AND is_array($this->emptyCheckField)){
+				$ec = 0;
+				foreach($this->emptyCheckField AS $field){
+					if($A->A($field) != "")
+						continue;
+						
+					$autoLoad = $action;
+					$isEmpty = true;
+					$ec++;
+				}
+				$isEmpty = $ec == count($this->emptyCheckField);
 			}
 			
 			if(!$isEmpty)

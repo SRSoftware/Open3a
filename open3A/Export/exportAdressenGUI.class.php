@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class exportAdressenGUI extends exportDefault implements iExport, iGUIHTML2 {
 
@@ -29,7 +29,24 @@ class exportAdressenGUI extends exportDefault implements iExport, iGUIHTML2 {
 		return array("open3A", "lightCRM");
 	}
 
-	public function getExportCollection(){
+	public function getHTML($id){
+		$p = parent::getHTML($id);
+		
+		$AC = anyC::get("Adresse", "AuftragID", "-1");
+		$num = $AC->getTotalNum();
+		if($num < 2000)
+			return $p;
+		
+		
+		$T = new HTMLForm("exportSubset", array("anzahl", "start"), "Auswahl");
+		$T->getTable()->setColWidth(1, 120);
+		
+		$T->setDescriptionField("start", "Zum Beispiel bei Anzahl 1000: 1, 1001, 2001, 3001, ...");
+		
+		return "<p>Ihre Datenbank enthält $num Datensätze. Bitte geben Sie den Startdatensatz sowie eine Anzahl ein, um eine Auswahl zu exportieren.</p>".$T.$p;
+	}
+
+	public function getExportCollection($start = null, $count = null){
 		$ac = new anyC();
 		$ac->setCollectionOf("Kategorie");
 		$ac->addAssocV3("type", "=", "1");
@@ -63,6 +80,9 @@ class exportAdressenGUI extends exportDefault implements iExport, iGUIHTML2 {
 			"kundennummer AS Kundennummer",
 			"t2.UStIdNr AS UStIdNr"));
 
+		if($start AND $count)
+			$ac->setLimitV3 ("$start, $count");
+		
 		return $ac;
 	}
 
