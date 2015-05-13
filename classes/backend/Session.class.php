@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Session {
 	static $instance;
@@ -138,7 +138,7 @@ class Session {
 		if($plugin == "Printers") return true;
 		if($plugin == "Credits") return true;
 		if($plugin == "Desktop") return true;
-		if($plugin == "DesktopLink") return true;
+		#if($plugin == "DesktopLink") return true;
 		if($plugin == "Userdata" AND $this->isUserAdmin()) return true;
 		if($plugin == "BackupManager" AND $this->isUserAdmin()) return true;
 		if($plugin == "LoginData" AND $this->isUserAdmin()) return true;
@@ -185,9 +185,15 @@ class Session {
 		foreach($this->afterLoginFunctions as $key => $value) {
 			try {
 				$c = new $key;
-				if(!method_exists($c, $value)) continue;
-				$f = "@".$key."::".$value."();";
-				eval($f);
+				if(!method_exists($c, $value))
+					continue;
+				
+				#$f = "@".$key."::".$value."();";
+				#eval($f);
+				#$s = explode("::",$value);
+				$method = new ReflectionMethod($key, $value);
+				$method->invoke(null);
+				
 			} catch(Exception $e){
 				continue;
 			}

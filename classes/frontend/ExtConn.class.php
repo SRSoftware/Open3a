@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class ExtConn {
 	protected $absolutePath;
@@ -59,12 +59,14 @@ class ExtConn {
 			$this->paths[] = $this->absolutePath."classes/backend/PluginV2.class.php";
 			$this->paths[] = $this->absolutePath."classes/backend/XMLPlugin.class.php";
 			$this->paths[] = $this->absolutePath."classes/backend/FileStorage.class.php";
+			$this->paths[] = $this->absolutePath."classes/backend/SpeedCache.class.php";
 
 			$this->paths[] = $this->absolutePath."classes/exceptions/o3AException.class.php";
 			$this->paths[] = $this->absolutePath."classes/exceptions/StorageException.class.php";
 			$this->paths[] = $this->absolutePath."classes/exceptions/NoDBUserDataException.class.php";
 			$this->paths[] = $this->absolutePath."classes/exceptions/AOPNoAdviceException.class.php";
 			$this->paths[] = $this->absolutePath."classes/exceptions/ClassNotFoundException.class.php";
+			$this->paths[] = $this->absolutePath."classes/exceptions/BrainSplitException.class.php";
 
 			$this->paths[] = $this->absolutePath."classes/toolbox/SysMessages.class.php";
 			$this->paths[] = $this->absolutePath."classes/toolbox/SystemCommand.class.php";
@@ -80,7 +82,7 @@ class ExtConn {
 
 			$this->paths[] = $this->absolutePath."classes/interfaces/iFileBrowser.class.php";
 			$this->paths[] = $this->absolutePath."classes/interfaces/iLDAPExport.class.php";
-			$this->paths[] = $this->absolutePath."classes/interfaces/iDesktopLink.class.php";
+			#$this->paths[] = $this->absolutePath."classes/interfaces/iDesktopLink.class.php";
 			$this->paths[] = $this->absolutePath."classes/interfaces/icontextMenu.class.php";
 			$this->paths[] = $this->absolutePath."classes/interfaces/iCloneable.class.php";
 			$this->paths[] = $this->absolutePath."classes/interfaces/iDeletable.class.php";
@@ -209,7 +211,7 @@ class ExtConn {
 		if($httpHost != "*"){
 			$q = $PFDB->pfdbQuery("SELECT * FROM Installation WHERE httpHost = '$httpHost'");
 			$Data = $PFDB->pfdbFetchAssoc($q);
-		} else {
+		} elseif(isset($_SERVER["HTTP_HOST"])) {
 			$q = $PFDB->pfdbQuery("SELECT * FROM Installation WHERE httpHost = '".$_SERVER["HTTP_HOST"]."'");
 			$Data = $PFDB->pfdbFetchAssoc($q);
 		}

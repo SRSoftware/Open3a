@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class HTMLInput {
 	private $type;
@@ -50,6 +50,7 @@ class HTMLInput {
 	private $autocorrect = true;
 	private $spellcheck = true;
 	private $title;
+	private $data = array();
 	
 	public function __construct($name, $type = "text", $value = null, $options = null){
 		$this->name = $name;
@@ -60,6 +61,10 @@ class HTMLInput {
 
 	public function title($title){
 		$this->title = $title;
+	}
+	
+	public function data($key, $value){
+		$this->data[$key] = $value;
 	}
 	
 	public function maxlength($length){
@@ -167,11 +172,11 @@ class HTMLInput {
 		return $this->value;
 	}
 
-	public function requestFocus(){
+	public function requestFocus($setToLast = false){
 		if($this->id === null)
 			$this->id = "Field".rand(100, 1000000);
 		
-		$this->requestFocus = "<script type=\"text/javascript\">setTimeout(function() { $('$this->id').focus(); }, 200);</script>";
+		$this->requestFocus = "<script type=\"text/javascript\">setTimeout(function() { \$j('#$this->id').trigger('focus'); ".($setToLast ? "var strLength = \$j('#$this->id').val().length; \$j('#$this->id')[0].setSelectionRange(strLength, strLength);;" : "")." }, 200);</script>";
 	}
 	
 	public function onEnter($function){
@@ -300,13 +305,15 @@ class HTMLInput {
 			break;
 		
 			case "tinyMCE":
-
 				$BO = array("'{$this->options[0]}'", "'{$this->options[1]}'");
 				if(isset($this->options[2]))
 					$BO[] = "'{$this->options[2]}'";
+				if(isset($this->options[3]))
+					$BO[] = "'{$this->options[3]}'";
 					
 				$B = new Button("in Editor\nbearbeiten","editor");
 				#$B->windowRme("Wysiwyg","","getEditor","","WysiwygGUI;FieldClass:{$this->options[0]};FieldClassID:{$this->options[1]};FieldName:{$this->options[2]}");
+				$B->doBefore("Overlay.showDark(); %AFTER");
 				$B->popup("", "Editor", "tinyMCE", "-1", "editInPopup", $BO, "", "Popup.presets.large");
 				$B->className("backgroundColor2");
 
@@ -364,6 +371,7 @@ class HTMLInput {
 					".($this->onblur != null ? "onblur=\"$this->onblur\"" : "")."
 					".($this->onfocus != null ? "onfocus=\"$this->onfocus\"" : "")."
 					".($this->onkeyup != null ? "onkeyup=\"$this->onkeyup\"" : "")."
+					".($this->isDisabled ? "disabled=\"disabled\"" : "")."
 					".($this->hasFocusEvent ? "onfocus=\"focusMe(this);\" onblur=\"blurMe(this);\"" : "")."
 					".($this->id != null ? "id=\"$this->id\"" : "").">$this->value</textarea>";
 			break;
@@ -375,7 +383,7 @@ class HTMLInput {
 				
 				if(isset($this->options["autoUpload"]) AND !$this->options["autoUpload"])
 					$this->callback = "QQUploader$currentId.uploadStoredFiles();";
-				
+
 				return "
 					<div id=\"progress_$currentId\" style=\"height:10px;width:95%;display:none;\" class=\"\">
 						<div id=\"progressBar_$currentId\" style=\"height:10px;width:0%;\" class=\"backgroundColor1\"></div>
@@ -425,6 +433,7 @@ class HTMLInput {
 			case "checkbox":
 			case "readonly":
 			case "fileold":
+			case "color":
 				$JS = "";
 				if($this->type == "radio1")
 					$this->type = "radio";
@@ -476,6 +485,11 @@ class HTMLInput {
 				$value = "value=\"".htmlspecialchars($this->value)."\"";
 				if($this->type == "checkbox") $value = $this->value == "1" ? "checked=\"checked\"" : "";
 
+				$data = "";
+				foreach($this->data AS $k => $v)
+					$data .= " data-$k=\"$v\"";
+				
+				
 
 				if($this->autocomplete != null){
 					if($this->id == null)
@@ -529,7 +543,8 @@ class HTMLInput {
 							 ".OnEvent::rme($this->autocomplete[0], "getACData", array("'$this->name'", "request.term", $this->autocomplete[3]), "function(transport){ response(jQuery.parseJSON(transport.responseText)); }")."
 							 
 						},
-						select: function(event, ui) { var r = OnSelectCallback$this->id(ui.item); ".($this->autocomplete[2] ? "$('$this->id').style.display = 'none';" : "")." return r; }
+						select: function(event, ui) { var r = OnSelectCallback$this->id(ui.item); ".($this->autocomplete[2] ? "$('$this->id').style.display = 'none';" : "")." return r; },
+						change: function(event, ui) { var r = OnSelectCallback$this->id(ui.item); ".($this->autocomplete[2] ? "$('$this->id').style.display = 'none';" : "")." return r; }
 					}).data(\"ui-autocomplete\")._renderItem = function( ul, item ) {
 						return \$j( \"<li>\" )
 							.data( \"item.ui-autocomplete\", item )
@@ -555,6 +570,7 @@ class HTMLInput {
 					".($this->type == "file" ? "size=\"1\"" : "")."
 					".($this->type == "readonly" ? "readonly=\"readonly\"" : "")."
 					name=\"$this->name\"
+					$data
 					".($this->isDisabled ? "disabled=\"disabled\"" : "")."
 					type=\"".($this->type != "readonly" ? $this->type : "text" )."\"
 					".($this->onchange != null ? "onchange=\"$this->onchange\"" : "")."
@@ -607,8 +623,12 @@ class HTMLInput {
 				if($this->options != null AND is_array($this->options))
 					foreach($this->options AS $k => $v)
 						if(!is_object($v)) {
-							if($this->type == "select") $isThisIt = ($this->value == $k);
-							else $isThisIt = in_array($k, $values);
+							if($this->type == "select"){
+								$isThisIt = ($this->value == $k);
+								if($this->value."" === "" AND $k."" === "0")
+									$isThisIt = false;
+							} else
+								$isThisIt = in_array($k, $values);
 
 							$html .= "<option ".($isThisIt ? "selected=\"selected\"" : "")." value=\"$k\">$v</option>";
 						}

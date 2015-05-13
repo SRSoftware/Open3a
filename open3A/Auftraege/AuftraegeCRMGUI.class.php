@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class AuftraegeCRMGUI extends Auftraege implements iGUIHTMLMP2 {
 	public static $GRLBMS;
@@ -77,7 +77,7 @@ class AuftraegeCRMGUI extends Auftraege implements iGUIHTMLMP2 {
 			$html .= "<div class=\"backgroundColor0\" style=\"float:right;padding:3px;margin-right:-3px;margin-top:-3px;\">";
 			self::$first = false;
 			
-			$BA = Auftrag::getBelegArten();
+			$BA = Auftrag::getBelegArten(null, false, "open3A");
 			$show = BPS::getProperty("AuftraegeCRMGUI", "show", "all");
 			
 			foreach($BA AS $v){

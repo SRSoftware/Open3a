@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Textbausteine extends anyC {
 	private $TBKategorien = array();
@@ -36,7 +36,8 @@ class Textbausteine extends anyC {
 	}
 
 	public function getTBs($kategorie, $type, $standardOnly = false){
-		if($type == "Kalk") return null;
+		if($type == "Kalk")
+			return null;
 		
 		switch($kategorie){
 			case "oben":
@@ -59,6 +60,16 @@ class Textbausteine extends anyC {
 				$this->addAssocV3("KategorieID","=","33");
 			break;
 			
+			case "emailMahnung1":
+				$this->addAssocV3("KategorieID","=","131");
+			break;
+			case "emailMahnung2":
+				$this->addAssocV3("KategorieID","=","132");
+			break;
+			case "emailMahnung3":
+				$this->addAssocV3("KategorieID","=","133");
+			break;
+			
 			case "emailBetreff": //No longer used as of 1.6 [06.11.2011] still required for automatic recovery
 				$this->addAssocV3("KategorieID","=","41");
 			break;
@@ -79,21 +90,22 @@ class Textbausteine extends anyC {
 			break;
 		}
 		
-		if($type != "" AND $standardOnly) $this->addAssocV3("is".$type{0}."Standard","=","1");
+		if($type != "" AND $standardOnly)
+			$this->addAssocV3("is".$type{0}."Standard","=","1");
 		
-		if($type != "") $this->addOrderV3("is".$type{0}."Standard","DESC");
-		else $this->addOrderV3("isKatDefault","DESC");
+		if($type != "")
+			$this->addOrderV3("is".$type{0}."Standard","DESC");
+		else
+			$this->addOrderV3("isKatDefault","DESC");
 		$this->addOrderV3("label","ASC");
 		
-		if($standardOnly AND $type == "") $this->addAssocV3("isKatDefault","=","1");
-		
-		#$this->loadCollectionV2();
+		if($standardOnly AND $type == "")
+			$this->addAssocV3("isKatDefault", "=", "1");
 		
 		$keys = array();
 		$values = array();
-		#$e = $this->getNextEntry();
 		
-		while($e = $this->getNextEntry()){
+		while($e = $this->n()){
 			$keys[] = $e->getID();
 			$values[] = $e->A("label");
 		}
@@ -114,7 +126,7 @@ class Textbausteine extends anyC {
 		if(!isset($_SESSION["TBVariables"]))
 			$_SESSION["TBVariables"] = array();
 		
-		$_SESSION["TBVariables"][$key] = $name;
+			$_SESSION["TBVariables"][$key] = $name;
 	}
 	
 	public function addTBVariablesCondition($key, $name, $condition){

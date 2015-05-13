@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class AuftraegeSearchHelper extends anyC {
@@ -26,7 +26,8 @@ class AuftraegeSearchHelper extends anyC {
 		
 		$this->setLimitV3("10");
 		$this->addOrderV3("auftragDatum","DESC");
-		$this->setFieldsV3(array("nachname","datum","firma","nummer"/*,"username"*/,"vorname", "t1.UserID", "GRLBMID"));
+		$fields = array("nachname","datum","firma","nummer"/*,"username"*/,"vorname", "t1.UserID", "GRLBMID", "AuftragAdresseNiederlassungID", "AuftragAdresseNiederlassungData");
+		$this->setFieldsV3($fields);
 
 		$this->customize();
 	}

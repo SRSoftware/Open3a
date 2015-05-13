@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 	
@@ -123,6 +123,35 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 			$BNO = new Button("Angebot abgelehnt", "x", "iconicL");
 			$BNO->style("float:right;margin-right:5px;margin-top:5px;");
 			$BNO->rmePCR("Auftrag", $this->A("AuftragID"), "updateStatus", array("'declined'"), "function(){ showMessage('Angebot als abgeleht markiert'); contentManager.reloadFrame('contentRight'); }");
+		}
+		
+		
+		if($type == "B" AND ($this->A("GRLBMOrderGRLBMIDs") == "" OR $this->A("GRLBMOrderGRLBMIDs") == "note") AND Session::isPluginLoaded("mLBestellung")){
+			$BAB = new Button("Zur Bestellung\nvormerken", "bestellung");
+			$BAB->style("float:right;margin-right:10px;");
+			$BAB->className("backgroundColor2");
+			$BAB->rmePCR("GRLBM", $this->ID, "orderNote", "", "contentManager.loadFrame('subframe','GRLBM', $this->ID);");
+			if($this->A("GRLBMOrderGRLBMIDs") == "note")
+				$BAB->className("highlight");
+		}
+		
+		if($type == "B" AND $this->A("GRLBMOrderGRLBMIDs") != "" AND $this->A("GRLBMOrderGRLBMIDs") != "note" AND Session::isPluginLoaded("mLBestellung")){
+			$ids = explode(",", trim($this->A("GRLBMOrderGRLBMIDs"), ","));
+			$belege = "";
+			foreach ($ids AS $v){
+				$G = new GRLBM($v, false);
+				$belege .= ($belege == "" ? "" : ", ").$G->A("prefix").$G->A("nummer");
+			}
+			$BAB = "<div style=\"width:140px;float:right;margin-right:10px;height:30px;padding:5px;\" class=\"confirm\">Bestellt: $belege</div>";
+		}
+		
+		if($type == "B" AND ($this->A("GRLBMProductionLaufzettel") == "" OR $this->A("GRLBMProductionLaufzettel") == "note") AND Session::isPluginLoaded("mLaufzettel")){
+			$BAB = new Button("Zur Produktion\nvormerken", "./upFab/Laufzettel/Laufzettel.png");
+			$BAB->style("float:right;margin-right:10px;");
+			$BAB->className("backgroundColor2");
+			$BAB->rmePCR("GRLBM", $this->ID, "productionNote", "", "contentManager.loadFrame('subframe','GRLBM', $this->ID);");
+			if($this->A("GRLBMProductionLaufzettel") == "note")
+				$BAB->className("highlight");
 		}
 
 		$pSpecData = mUserdata::getPluginSpecificData("Provisionen");
@@ -307,6 +336,7 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 			$BFiles = mFileGUI::getManagerButton("GRLBM", $this->getID(), true);
 			$BFiles->style("float:right;");
 			
+			
 			$below .= $BFiles;
 		}
 		
@@ -352,12 +382,11 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 			
 			$CurrentVorlage = new $CurrentVorlage($Stammdaten);
 		} catch (ClassNotFoundException $e){
-			$CurrentVorlage = new Vorlage_any($Stammdaten);
-			
 			$ErrorVorlage = "<div class=\"error AuftragBelegContent\" style=\"padding:10px;padding-right:0px;\">Bitte überprüfen Sie Ihre Stammdaten, die ausgewählte Vorlage ($CurrentVorlage) konnte nicht gefunden werden.</div>";
+			$CurrentVorlage = new Vorlage_any($Stammdaten);
 		}
 		
-		for($i = 1; $i < 8; $i++){
+		for($i = 1; $i < 20; $i++){
 			$labelName = "labelCustomField$i";
 
 			if(isset($CurrentVorlage->$labelName) AND $CurrentVorlage->$labelName != null){
@@ -385,6 +414,8 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 				$gui->setType("GRLBMAnsprechpartnerID", "select");
 				$gui->setOptions("GRLBMAnsprechpartnerID", array_keys($ansprechpartner), array_values($ansprechpartner));
 				$gui->setLabel("GRLBMAnsprechpartnerID", "Ansprechpartner");
+
+				$gui->activateFeature("addCustomButton", $this, "GRLBMAnsprechpartnerID", Ansprechpartner::getButtonSmall("Adresse", Kappendix::getAdresseIDToKundennummer($Auftrag->A("kundennummer")), "{}", "Ansprechpartner;GRLBMID:".$this->getID().""));
 			}
 		}
 
@@ -603,7 +634,8 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 		$B1 = new Button("1x-Belegadresse verwenden", "./open3A/Auftraege/1xlieferAdresse.png");
 		$B1->style("float:right;margin-left:10px;");
 		$B1->type("icon");
-		$B1->onclick("contentManager.loadFrame('contentRight','Adresse', -1, 0,'AdresseGUI;AuftragID:$s[0];displayMode:lieferAdresse');");
+		$B1->editInPopup("AuftragAdresse", "-1", "Adresse anlegen", "AuftragAdresseGUI;AuftragID:$s[0];displayMode:lieferAdresse");
+		#$B1->onclick("contentManager.loadFrame('contentRight','Adresse', -1, 0,'AdresseGUI;AuftragID:$s[0];displayMode:lieferAdresse');");
 
 		$BC = new Button("Belegadresse ändern", "./open3A/Auftraege/lieferAdresse.png");
 		$BC->style("float:right;");
@@ -719,6 +751,14 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 
 					echo $gui->getContextMenu($kAL, "GRLBM", "useDSN", $selectedKey);
 				}
+				
+				echo "<div style=\"margin:1px;margin-top:10px;padding:3px;font-weight:bold;\" class=\"backgroundColor2\">Bei Mahnung:</div>";
+				
+				$kAL = array();
+				$kAL["false"] = "Keine Rechnung anhängen";
+				$kAL["true"] = "Rechnung anhängen";
+				
+				echo $gui->getContextMenu($kAL, "GRLBM", "mailAttachInvoice", mUserdata::getUDValueS("sendBelegViaEmailAttachInvoice", "false"));
 			break;
 			
 			case "setPayed":
@@ -794,6 +834,11 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 		
 		if($identifier == "useDSN")
 			$ud->setUserdata("sendBelegViaEmailDSN",$key);
+		
+		if($identifier == "mailAttachInvoice")
+			$ud->setUserdata("sendBelegViaEmailAttachInvoice",$key);
+		
+		
 	}
 	// </editor-fold>
 	
@@ -804,7 +849,7 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 	
 	public function getPostenCopy($ArtikelID, $menge = 1, $beschreibung = null, $kundennummer = null, $preis = null){
 		$PostenID = parent::getPostenCopy($ArtikelID);
-		Red::messageD("Posten erstellt", array("PostenID" => $PostenID));
+		Red::messageD("Posten erstellt", array("PostenID" => $PostenID, "bestand" => $this->newPostenMessageBestand));
 	}
 
 	public function setPayed($p, $skonto = "0,00", $datum = "0", $isTeilzahlung = "false", $TeilzahlungBetrag = "", $save = true){
@@ -833,6 +878,20 @@ class GRLBMGUI extends GRLBM implements iGUIHTML2, icontextMenu {
 		$IT->style($p != "" ? "" : "display:none;");
 		
 		return $IF."<div id=\"lieferDatumContainer\" style=\"width:90%;".($p != "" ? "display:none;" : "")."\">".$I."</div>".$IT;
+	}
+	
+	public function orderNote(){
+		$this->changeA("GRLBMOrderGRLBMIDs", "note");
+		$this->changeA("isPayed", "1");
+		$this->changeA("GRLBMpayedDate", time());
+		$this->saveMe();
+	}
+	
+	public function productionNote(){
+		$this->changeA("GRLBMProductionLaufzettel", "note");
+		$this->changeA("isPayed", "1");
+		$this->changeA("GRLBMpayedDate", time());
+		$this->saveMe();
 	}
 	
 	public function addFile($id){

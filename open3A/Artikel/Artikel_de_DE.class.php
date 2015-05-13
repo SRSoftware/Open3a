@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class Artikel_de_DE implements iTranslation {
@@ -42,7 +42,7 @@ class Artikel_de_DE implements iTranslation {
 		return array(
 		"bemerkung" => "Wird in der Liste rechts angezeigt",
 		"hideInReport" => "Soll der Artikel in einem Bericht nicht angezeigt werden?",
-		"beschreibung" => "Wird auf der Rechnung angezeigt");
+		"beschreibung" => "Wird auf den Belegen angezeigt");
 	}
 	
 	public function getText(){
@@ -55,8 +55,8 @@ class Artikel_de_DE implements iTranslation {
 		"Stück plural" => "Stück",
 		"kein Lieferant" => "kein Lieferant",
 		"Lieferant" => "Lieferant",
-		"Lieferanten" => "Lieferanten",
-		"Rechner" => "Brutto- in Nettopreis umrechnen");
+		"Lieferanten" => "Lieferanten"/*,
+		"Rechner" => "Brutto- in Nettopreis umrechnen"*/);
 	}
 
 	public function getSingular(){

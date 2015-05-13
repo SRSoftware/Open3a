@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class ArrayCollection extends Collection {
@@ -27,7 +27,8 @@ class ArrayCollection extends Collection {
 	}
 	
 	public function add($element){
-		$element->setID($this->counter);
+		if(method_exists($element, "setID"))
+			$element->setID($this->counter);
 		$this->collector[$this->counter++] = $element;
 	}
 	
