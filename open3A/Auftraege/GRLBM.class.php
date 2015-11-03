@@ -128,7 +128,9 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		while($t = $aC->getNextEntry()){
 			if($t->A("PostenIsAlternative") !== null AND $t->A("PostenIsAlternative") > 0)
 				continue;
-			
+			if (stripos($t->A('name'),'option') ===false) {
+				continue;
+			}	
 			
 			$rabatt = 1;
 			if(isset($t->getA()->rabatt))
@@ -153,7 +155,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 			
 			
 			$posten_brutto = ($t->A("isBrutto") == "1" ? $t->A("bruttopreis") * $t->A("menge") * $menge2 * $rabatt : $t->A("preis") * $t->A("menge") * $menge2 * (100 + $t->A("mwst")) / 100 * $rabatt) ;
-
+			
 			$ges_brutto += $posten_brutto;
 
 			$ges_ek1 += $t->A("menge") * $menge2 * $t->A("EK1");

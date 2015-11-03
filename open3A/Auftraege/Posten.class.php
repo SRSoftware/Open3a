@@ -74,7 +74,10 @@ class Posten extends PersistentObject {
 		$mwstBetrag = $bruttoPreis - $nettoPreis;
 		
 		$bruttoPreisGesamt = $A->menge * $menge2 * $bruttoPreis;
-		
+	
+		if (stripos($A->name,'option') !== false){
+			$A->PostenIsAlternative = 1;
+		}	
 		if($fpdf == null OR (isset($A->PostenIsAlternative) AND $A->PostenIsAlternative > 0))
 			return array("nettoPreis" => $nettoPreis, "bruttoPreis" => $bruttoPreis, "nettoPreisOhneRabatt" => $nettoPreisOhneRabatt, "bruttoPreisGesamt" => $bruttoPreisGesamt, "mwstFaktor" => $mwstFaktor, "mwstBetrag" => $mwstBetrag, "rabattFaktor" => $rabattFaktor, "rabattBetrag" => $rabattBetrag);
 	
