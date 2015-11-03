@@ -142,7 +142,9 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 			if(!isset($gesamt_netto_array[$t->A("mwst")]))
 				$gesamt_netto_array[$t->A("mwst")] = 0;
 
-			$gesamt_netto_array[$t->A("mwst")] += $nettopreis;
+			if (stripos($t->A('name'),'option') ===false) {
+				$gesamt_netto_array[$t->A("mwst")] += $nettopreis;
+			}
 			
 			if(isset($t->getA()->steuer)){
 				if(!isset($artikelsteuern[$t->A("steuer")]))
@@ -153,10 +155,12 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 			
 			
 			$posten_brutto = ($t->A("isBrutto") == "1" ? $t->A("bruttopreis") * $t->A("menge") * $menge2 * $rabatt : $t->A("preis") * $t->A("menge") * $menge2 * (100 + $t->A("mwst")) / 100 * $rabatt) ;
+			
+			if (stripos($t->A('name'),'option') ===false) {
+				$ges_brutto += $posten_brutto;
 
-			$ges_brutto += $posten_brutto;
-
-			$ges_ek1 += $t->A("menge") * $menge2 * $t->A("EK1");
+				$ges_ek1 += $t->A("menge") * $menge2 * $t->A("EK1");
+			}
 
 			if(array_search($t->A("mwst"), $mwst) === false){
 				$mwst[] = $t->A("mwst");
