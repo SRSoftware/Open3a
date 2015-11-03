@@ -128,7 +128,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		while($t = $aC->getNextEntry()){
 			if($t->A("PostenIsAlternative") !== null AND $t->A("PostenIsAlternative") > 0)
 				continue;
-			if (stripos($t->A('name'),'option') ===false) {
+			if (stripos($t->A('name'),'option') !==false) {
 				continue;
 			}	
 			
