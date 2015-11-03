@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	
@@ -63,7 +63,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 			$A->mwst = Util::parseFloat("de_DE",str_replace("%","",$M->A("name")));
 		
 		if(Session::isPluginLoaded("mBrutto") AND !Session::isPluginLoaded("mLohngruppe"))
-			$A->isBrutto = "1";
+			$A->isBrutto = mUserdata::getUDValueS("DefaultValueArtikelisBrutto", "1");
 		
 		#$A->sachkonto = mUserdata::getGlobalSettingValue("DVArtikelSachkonto", "8400");;
 		
@@ -130,8 +130,8 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 		$LP = null;
 		if(Session::isPluginLoaded("mLieferant"))
 			$LP = mLieferant::getCheapestEK($this->getID(), $LieferantID);
-
-		if($LP == null){
+		
+		if($LP === null){
 			if($this->hasParsers)
 				return Util::CLNumberParserZ($this->A("EK1"), "store");
 			
@@ -150,7 +150,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	}
 
 	public function getArtikelLP($LieferantID = null){
-		if(Session::isPluginLoaded("mLieferant") AND Lieferant::hasArtikelLieferant($this->getID()))
+		if(Session::isPluginLoaded("mLieferant") AND Lieferant::hasArtikelLieferant($this->getID()) AND $this->A("preisModus") == "0")
 			return mLieferant::getCheapestLP($this->getID(), $LieferantID);
 		else
 			return $this->hasParsers ? Util::CLNumberParserZ($this->A("preis"), "store") : $this->A("preis");
@@ -178,6 +178,9 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	}
 
 	public function getAufschlagListenpreis($LieferantID = null){
+		if($this->A("preisModus") != "0")
+			return 0;
+		
 		$aufschlag = $this->hasParsers ? Util::CLNumberParserZ($this->A("aufschlagListenpreis"), "store") : $this->A("aufschlagListenpreis");
 		
 		return Util::kRound($this->getArtikelLP($LieferantID) * ($aufschlag / 100));
@@ -185,6 +188,9 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 
 
 	public function getAufschlagGesamt($LieferantID = null){
+		if($this->A("preisModus") != "0")
+			return 0;
+		
 		$gesamtEK1 = $this->getArtikelLP($LieferantID) + $this->getAufschlagListenpreis($LieferantID) + $this->getLohnEK();
 		
 		$aufschlag = $this->hasParsers ? Util::CLNumberParserZ($this->A("aufschlagGesamt"), "store") : $this->A("aufschlagGesamt");
@@ -216,6 +222,8 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 
 	public function getGesamtBruttoVK($withStueckliste = true, $LieferantID = null){
 		$ownPrice = Util::kRound($this->getGesamtNettoVK(false, $LieferantID) * (1 + $this->A("mwst") / 100));
+		if($this->A("isBrutto"))
+			$ownPrice = $this->A("bruttopreis");
 		
 		if($withStueckliste AND Session::isPluginLoaded("mStueckliste")){
 			$SL = Stueckliste::getStueckliste($this->getID());

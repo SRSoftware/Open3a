@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
 class Brief extends UnpersistentClass {
@@ -87,7 +87,7 @@ class Brief extends UnpersistentClass {
 		$this->Posten = $P;
 	}
 	
-	public function PDFObjectFactory(){
+	public function PDFObjectFactory($SpracheID = null){
 		if($this->stammdaten == null) {
 			$_SESSION["messages"]->addMessage("No Stammdaten set. Please use setStammdaten() before calling PDFObjectFactory()!");
 			die("No Stammdaten set. See Message log for details.");
@@ -134,7 +134,7 @@ class Brief extends UnpersistentClass {
 				throw $e;
 		}
 		
-		$this->letter = new $n($this->stammdaten);
+		$this->letter = new $n($this->stammdaten, $SpracheID);
 
 		return $this->letter;
 	}
@@ -148,8 +148,8 @@ class Brief extends UnpersistentClass {
 			$_SESSION["messages"]->addMessage("No Stammdaten set. Please use setStammdaten() before calling generate()!");
 			die("No Stammdaten set. See Message log for details.");
 		}
-		
-		$this->letter = ($pdfToUse == null ? $this->PDFObjectFactory() : $pdfToUse);
+
+		$this->letter = ($pdfToUse == null ? $this->PDFObjectFactory($this->Adresse != null ? $this->Adresse->A("AdresseSpracheID") : null) : $pdfToUse);
 
 		$this->letter->leasingrate = $this->leasingrate;
 		$this->letter->rabatt = $this->rabatt;
@@ -194,7 +194,7 @@ class Brief extends UnpersistentClass {
 			$this->letter->embedDataAsFile($F, "ZUGFeRD-invoice.xml");
 		}
 		
-		$this->letter->printPaymentQR();
+		$this->letter->printPaymentQR($this->stammdaten, $this->GRLBM);
 		
 		if($this->Zahlungsbedingungen != null)
 			$this->letter->printTextbaustein($this->Zahlungsbedingungen);

@@ -15,22 +15,48 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 
+define("PHYNX_USE_TCPDF", true);
+
 // <editor-fold defaultstate="collapsed" desc="weiche">
-if(Session::isPluginLoaded("mTCPDF")){
-	class phynxPDF extends TCPDF {
+if(PHYNX_USE_TCPDF AND Session::isPluginLoaded("mTCPDF")){
+	class phynxPDF extends FPDI {
 		protected $fakePage = 0;
+		
 		protected $heightPDFHeader = 15;
 		protected $usePDFA = false;
+		protected $replaceKeyword = array();
+		protected $replaceWith = array();
+		#protected $fakePage = 0;
+		
+		function _putpages() {
+			$nb = $this->page;
+			#if (!empty($this->AliasNbPages)) {
+				//Replace number of pages
+				#for ($n = 1; $n <= $nb; $n++)
+				#	$this->pages[$n] = str_replace($this->nbTag, $this->fakePage, $this->pages[$n]);
+			#}
+		
+			if (count($this->replaceKeyword) > 0) {
+				for ($n = 1; $n <= $nb; $n++)
+					for ($i = 0; $i < count($this->replaceKeyword); $i++)
+						$this->pages[$n] = str_replace($this->replaceKeyword[$i], $this->replaceWith[$i], $this->pages[$n]);
+			}
+			#print_r($this->pages);
+			#die();
+		
+			parent::_putpages();
+		}
 		
 		function __construct($orientation = 'P', $unit = 'mm', $format = 'A4', $unicode = true, $encoding = 'UTF-8', $diskcache = false, $pdfa = false) {
 			parent::__construct($orientation, $unit, $format, $unicode, $encoding, $diskcache, $pdfa);
 			$this->marginTop = $this->positionPosten2teSeite[1] + $this->heightPDFHeader;
+			TCPDF_STATIC::$alias_tot_pages = "{nb}";
 		}
 		
-		function MultiCell8($w, $h, $txt, $border = 0, $align = 'J', $fill = false, $ln = 1, $x = '', $y = '', $reseth = true, $stretch = 0, $ishtml = false, $autopadding = true, $maxh = 0, $valign = 'T', $fitcell = false) {
+		function MultiCell8($w, $h, $txt, $border = 0, $align = 'L', $fill = false, $ln = 1, $x = '', $y = '', $reseth = true, $stretch = 0, $ishtml = false, $autopadding = true, $maxh = 0, $valign = 'T', $fitcell = false) {
 			parent::MultiCell($w, $h, $txt, $border, $align, $fill, $ln, $x, $y, $reseth, $stretch, $ishtml, $autopadding, $maxh, $valign, $fitcell);
 		}
 
@@ -43,16 +69,10 @@ if(Session::isPluginLoaded("mTCPDF")){
 		}
 		
 		function AddPage($orientation = '', $resetFakePageCounter = false, $keepmargins = false, $tocpage = false) {
-			if ($resetFakePageCounter)
-				$this->fakePage = 0;
-
-			#echo $this->GetX()."<br />";
-			
-			#if($this->PageNo() >= 1)
-			#	$this->SetMargins($this->positionPosten2teSeite[0] + 30, $this->positionPosten2teSeite[1] + $this->heightPDFHeader);
-			
 			parent::AddPage($orientation, '', $keepmargins, $tocpage);
 			
+			if ($resetFakePageCounter)
+				$this->fakePage = 1;
 		}
 		
 		function GetMargin($where) {
@@ -78,6 +98,7 @@ if(Session::isPluginLoaded("mTCPDF")){
 		
 		function _beginpage($orientation = '', $format = '') {
 			$this->fakePage++;
+			
 			return parent::_beginpage($orientation, $format);
 		}
 		
@@ -189,6 +210,27 @@ if(Session::isPluginLoaded("mTCPDF")){
       </rdf:Description>';
 		}
 	
+		function ImageGD($im, $x, $y, $w = 0, $h = 0, $link = ''){
+			ob_start();
+			imagepng($im);
+			$data = ob_get_contents();
+			ob_end_clean();
+			
+			$this->Image("@".$data, $x, $y, $w, $h, "png", $link);
+		}
+		
+		public function getAliasNbPages(){
+			return $this->nbTag;
+		}
+		
+		public function getAliasNumPage(){
+			return $this->PageNo();#$this->fakePage;
+		}
+
+		function AddReplacement($keyword, $with) {
+			$this->replaceKeyword[] = $keyword;
+			$this->replaceWith[] = $with;
+		}
 	}
 } else {
 	class phynxPDF extends FormattedTextPDF {
@@ -211,6 +253,10 @@ if(Session::isPluginLoaded("mTCPDF")){
 		public function cur($text){
 			return Util::conv_euro8($text);
 		}
+		
+		public function SetTextColorArray($c){
+			$this->SetTextColor($c[0], $c[1], $c[2]);
+		}
 
 		/*function Cell8($w, $h=0, $txt='', $border=0, $ln=0, $align='', $fill=0, $link='') {
 			$this->Cell($w, $h, utf8_decode($txt), $border, $ln, $align, $fill, $link);
@@ -227,6 +273,7 @@ if(Session::isPluginLoaded("mTCPDF")){
 class PDFBrief extends phynxPDF {
 	protected $stammdaten;
 	public $VarsEmpfaengerAdresse;
+	public $VarsEmpfaengerAnsprechpartner;
 	public $VarsGRLBM;
 	public $VarsAuftrag;
 	public $brief;
@@ -243,12 +290,25 @@ class PDFBrief extends phynxPDF {
 	const DEFAULT_FONT = 'Helvetica';
 	
 	/**
-	 * @label Sprache / Währung
+	 * @label Standard-Sprache
 	 * @editor true
 	 * @values de_DE, de_DE_EUR, de_CH, de_CH_CHF, en_US, en_GB, en_NO, en_DK, en_SE
 	 */
 	public $language = "de_DE";
 	
+	
+	/**
+	 * @label Standard-Währung
+	 * @editor true
+	 * @values EUR, CHF, GBP, NOK, DKK, SEK
+	 */
+	public $currency = "EUR";
+	
+	/**
+	 * @label Währungs-Symbol
+	 * @editor true
+	 */
+	public $currencyUseSymbol = true;
 	/**
 	 * @group Belege
 	 * @label Rechnung
@@ -321,9 +381,29 @@ class PDFBrief extends phynxPDF {
 	public $labelFax = "Fax";
 	/**
 	 * @label Fax Lieferant
+	 * @optional true
 	 * @editor true
 	 */
 	public $labelFaxLieferant = "Fax Lieferant";
+	/**
+	 * @label Lieferantennummer
+	 * @optional true
+	 * @editor true
+	 */
+	public $labelLieferantennummer = "Lieferantennummer";
+	
+	/**
+	 * @label Bestellnummer
+	 * @optional true
+	 * @editor true
+	 */
+	public $labelBestellnummer = "Bestellnummer";
+	/**
+	 * @label Bestelldatum
+	 * @optional true
+	 * @editor true
+	 */
+	public $labelBestelldatum = "Bestelldatum";
 	
 	/**
 	 * @label Handy
@@ -391,6 +471,32 @@ class PDFBrief extends phynxPDF {
 	 * @editor true
 	 */
 	public $labelKundeUstID = "Kunden-Ust-IdNr";
+	/**
+	 * @label Kunde Ansprechpartner
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelKundeAnsprechpartner = null;
+	/**
+	 * @label Kunde Telefon
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelKundeTelefon = null;
+	/**
+	 * @label Kunde E-Mail
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelKundeEMail = null;
+	
+	/**
+	 * @label Filiale
+	 * @optional true
+	 * @editor true
+	 */
+	public $labelFiliale = "Filiale";
+	
 	/**
 	 * @label Kunden-Steuernummer
 	 * @editor true
@@ -607,7 +713,7 @@ class PDFBrief extends phynxPDF {
 	//Es stehen bis zu 3 frei wählbare Felder zur Verfügung
 	
 	/**
-	 * @group Benutzerfelder
+	 * @group Benutzerfelder oben
 	 * @label Feld 1
 	 * @editor true
 	 * @optional false
@@ -625,6 +731,26 @@ class PDFBrief extends phynxPDF {
 	 * @optional false
 	 */
 	public $labelCustomField3 = null;
+	
+	/**
+	 * @group Benutzerfelder unten
+	 * @label Feld 1
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelCustomField11 = null;
+	/**
+	 * @label Feld 2
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelCustomField12 = null;
+	/**
+	 * @label Feld 3
+	 * @editor true
+	 * @optional false
+	 */
+	public $labelCustomField13 = null;
 
 	
 	/**
@@ -755,6 +881,12 @@ class PDFBrief extends phynxPDF {
 	 */
 	public $backgroundWidth = 210;
 	
+	/**
+	 * @label Dateiname
+	 * @description Falls eine andere Datei verwendet werden soll
+	 * @editor true
+	 */
+	public $backgroundFileNameSecondPage = "";
 	
 	
 	/**
@@ -908,14 +1040,14 @@ class PDFBrief extends phynxPDF {
 	 * @editor true
 	 * @optional false
 	 */
-	public $widthRabatt = null; //Funktioniert nur mit dem Rabatt-Customizer
+	public $widthRabatt = null; //Funktioniert nur mit dem Rabatt-Customizer NICHT @requires CustomizerRabatt VERWENDEN!
 	
 	/**
 	 * @label Rabatt Preis
 	 * @editor true
 	 * @optional false
 	 */
-	public $widthRabattpreis = null; //Funktioniert nur mit dem Rabatt-Customizer
+	public $widthRabattpreis = null; //Funktioniert nur mit dem Rabatt-Customizer NICHT @requires CustomizerRabatt VERWENDEN!
 	/**
 	 * @group 
 	 * @label Gesamt Netto
@@ -995,6 +1127,15 @@ class PDFBrief extends phynxPDF {
 	 * @editor true
 	 */
 	public $show0ProzentMwSt = false;
+	
+	/**
+	 *
+	 * @label Artikelbilder auf
+	 * @editor true
+	 * @values G, R, L, B, A, P, O; Tragen Sie mehrere Werte getrennt von einem Leerzeichen ein: A R
+	 * @type string
+	 */
+	public $showImagesOn = "A";
 	
 	public $showPositionen = true;
 	protected $showHeader = true;
@@ -1189,6 +1330,12 @@ class PDFBrief extends phynxPDF {
 	 */
 	public $sumHideOn = "L P";
 	
+	/**
+	 * @label Ausrichtung
+	 * @editor true
+	 * @values horizontal oder vertical
+	 * @type string
+	 */
 	public $sumAlignment = "horizontal";
 	
 	/**
@@ -1201,7 +1348,7 @@ class PDFBrief extends phynxPDF {
 	 * @label Umsatzsteuer
 	 * @editor true
 	 */
-	public $sumUmsatzsteuerPosition = 122;
+	public $sumUmsatzsteuerPosition = 119;
 	
 	/**
 	 * @label Artikelsteuer
@@ -1225,7 +1372,7 @@ class PDFBrief extends phynxPDF {
 	 * @label Umsatzsteuer
 	 * @editor true
 	 */
-	public $sumUmsatzsteuerWidth = 35;
+	public $sumUmsatzsteuerWidth = 38;
 	/**
 	 * @label Artikelsteuer
 	 * @editor true
@@ -1295,12 +1442,93 @@ class PDFBrief extends phynxPDF {
 	public $currentArticle = null;
 	public $isInPosten = false;
 	public $isInPostenBeschreibung = false;
+	public $isInPostenBezeichnung = false;
 	public $absenderZeileTrennzeichen = ",";
 
 	public $heightPositionenBeschreibung = 3;
 	public $heightRechnungsInfo = 4;
 	public $heightDetailsAdresse = 3.5;
+	public $heightEmpfaengerAdresse = 5;
 	public $heightDetails = 3.5;
+	public $heightPositionenHeader = 5;
+	
+	/**
+	 * @label Kopfzeile
+	 * @editor true
+	 */
+	public $colorHeader = array(0, 0, 0);
+	/**
+	 * @label Fußzeile
+	 * @editor true
+	 */
+	public $colorFooter = array(0, 0, 0);
+	/**
+	 * @label Empfänger-Adresse
+	 * @editor true
+	 */
+	public $colorEmpfaengerAdresse = array(0, 0, 0);
+	/**
+	 * @label Details
+	 * @editor true
+	 */
+	public $colorDetails = array(0, 0, 0);
+	/**
+	 * @label Absender-Zeile
+	 * @editor true
+	 */
+	public $colorAbsenderZeile = array(0, 0, 0);
+	/**
+	 * @label Textbausteine
+	 * @editor true
+	 */
+	public $colorTextbausteine = array(0, 0, 0);
+	/**
+	 * @label Allgemein
+	 * @group Positionen
+	 * @editor true
+	 */
+	public $colorPositionen = array(0, 0, 0);
+	/**
+	 * @label Kopfzeile
+	 * @editor true
+	 */
+	public $colorPositionenHeader = array(0, 0, 0);
+	
+	/**
+	 * @label Summe
+	 * @editor true
+	 */
+	public $colorSum = array(0, 0, 0);
+	/**
+	 * @label Kopfzeile Alternativ
+	 * @editor true
+	 * @requires CustomizerPostenOptionalGUI
+	 */
+	public $colorPositionenAlternativHeader = array(100, 100, 100);
+	/**
+	 * @label Position Alternativ
+	 * @editor true
+	 * @requires CustomizerPostenOptionalGUI
+	 */
+	public $colorPositionenAlternativ = array(80, 80, 80);
+	
+	/**
+	 * @label Spalten
+	 * @editor true
+	 */
+	public $orderCols = array(
+			"Position",
+			"Menge",
+			"Einheit",
+			"Menge2",
+			"Artikelnummer",
+			"Bezeichnung"
+		);
+	
+	/**
+	 * @label Spalten Preise
+	 * @editor true
+	 */
 	public $orderColsPrice = array(
 			"Einzelpreis",
 			"EinzelpreisNetto",
@@ -1312,15 +1540,99 @@ class PDFBrief extends phynxPDF {
 			"MwSt"
 		);
 	
+	/**
+	 * @label Beleginformationen
+	 * @editor true
+	 */
+	public $orderRechnungsInfo = array(
+		"belegnummer",
+		"ZuLieferschein",
+		"Datum",
+		"Lieferdatum",
+		"custom1",
+		"UstID",
+		"leer",
+		"Kundennummer",
+		"KundeUstID",
+		"KundeTelefon",
+		"KundeAnsprechpartner",
+		"KundeEMail",
+		"Filiale",
+		"FaxLieferant",
+		"Lieferantennummer",
+		"Bestellnummer",
+		"Bestelldatum",
+		"custom2"
+	);
+	
 	public $waehrungFaktor = 1;
 	private $waehrungFaktorSet = false;
 	
 	private $newFonts = array();
 	
+	public $translation = array("en_GB" => array(
+		"labelRechnung" => "Invoice",
+		"labelLieferschein" => "Delivery note",
+		"labelGutschrift" => "Credit note",
+		"labelAngebot" => "Offer",
+		"labelKalkulation" => "Calculation",
+		"labelBestellung" => "Order",
+		"labelPreisanfrage" => "Price inquiry",
+		"labelDokument" => "Document",
+		"labelMahnung" => "Reminder",
+		"labelZahlungserinnerung" => "Payment reminder",
+		"labelBestaetigung" => "Confirmation of your order",
+		"labelTelefon" => "Phone",
+		"labelFaxLieferant" => "Fax supplier",
+		"labelHandy" => "Mobile",
+		"labelEMail" => "E-mail",
+		"labelDatum" => "Date",
+		"labelIhrZeichen" => "Your sign",
+		"labelZuLieferschein" => "Delivery note",
+		"labelLieferdatum" => "Delivery date",
+		"labelStNr" => "Tax-ID",
+		"labelKundennummer" => "Customer number",
+		"labelKundeUstID" => "Your Tax-ID",
+		"labelKundeStNr" => "Your Tax-ID",
+		"labelUstID" => "Tax-ID",
+		"labelKopie" => "Copy",
+		"labelTeilrechnungen" => "Billings",
+		"labelTeilrechnung" => "Billing",
+		"labelAbschlagsrechnungen" => "Payment invoices",
+		"labelAbschlagsrechnung" => "Payment invoice",
+		"labelAbschlussrechnung" => "Your balance",
+		"labelFortsetzung" => "Continuation",
+		"labelMenge" => "Quantity",
+		"labelEinheit" => "Unit",
+		"labelArtikelnummer" => "Article no",
+		"labelBezeichnung" => "Description",
+		"labelEinzelpreis" => "Gross price",
+		"labelEinzelpreisNetto" => "Net price",
+		"labelRabatt" => "Discount",
+		"labelRabattpreis" => "Price discount",
+		"labelGesamtNettoPosten" => "Amount",
+		"labelMwStBetrag" => "Tax amount",
+		"labelGesamt" => "Total",
+		"labelMwSt" => "Tax %",
+		"labelGesamtNetto" => "Amount",
+		"labelUmsatzsteuer" => "Tax amount",
+		"labelArtikelsteuer" => "Pos. tax",
+		"labelRechnungsbetrag" => "Total",
+		"labelGutschriftsbetrag" => "Total",
+		"labelGesamtBrutto" => "Total",
+		"labelHandelsregister" => "Commercial register",
+		"labelSeite" => "Page",
+		"labelInhaber" => "Owner",
+		"labelGeschaeftsfuehrer" => "Managing director",
+		"labelBankverbindung" => "Bank account"
+	));
+	
 	/**
 	 * @editor false
 	 */
 	public $GRLBMNextLine;
+	
+	private $contentRechnungsInfo = array();
 	
 	/**
 	 * @editor false
@@ -1338,12 +1650,27 @@ class PDFBrief extends phynxPDF {
 	}
 	// </editor-fold>
 	
-	function __construct($S){
+	function __construct($S, $SpracheID = null){
 		$pdfa = Session::isPluginLoaded("mFeRD");
-		parent::__construct($this->pageOrientation, 'mm', $this->pageFormat, true, 'UTF-8', false, $pdfa);
 		
-		foreach($this->newFonts as $font)
-			parent::AddFont($font[0], trim($font[1]), $font[2]);
+		$this->translation["en_US"] = $this->translation["en_GB"];
+		
+		if(Session::isPluginLoaded("mSprache") AND $SpracheID != null){#$Adresse->A("AdresseSpracheID") != "0"){
+			$L = new Sprache($SpracheID);
+			$this->language = $L->A("SpracheSprache")."_".$L->A("SpracheLand");#.($L->A("SpracheWaehrungUseSymbol") == "1" ? "" : "_".$L->A("SpracheWaehrung"));
+			
+			$this->currency = $L->A("SpracheWaehrung");
+			$this->currencyUseSymbol = $L->A("SpracheWaehrungUseSymbol");
+			
+			if(isset($this->translation[$L->A("SpracheSprache")."_".$L->A("SpracheLand")]))
+				foreach($this->translation[$L->A("SpracheSprache")."_".$L->A("SpracheLand")] AS $k => $v)
+					if($this->$k != null AND $this->$k != "")
+						$this->$k = $v;
+			
+			
+			if($L->A("SpracheWaehrungFaktor") != "0" AND $L->A("SpracheWaehrungFaktor") != "" AND !$this->waehrungFaktorSet)
+				$this->waehrungFaktor = $L->A("SpracheWaehrungFaktor");
+		}
 		
 		$this->labelLong = array(
 			"R" => $this->labelRechnung,
@@ -1356,6 +1683,13 @@ class PDFBrief extends phynxPDF {
 			"O" => $this->labelBestellung,
 			"P" => $this->labelPreisanfrage,
 			"D" => $this->labelDokument);
+		
+		parent::__construct($this->pageOrientation, 'mm', $this->pageFormat, true, 'UTF-8', false, $pdfa);
+		
+		foreach($this->newFonts as $font)
+			parent::AddFont($font[0], trim($font[1]), $font[2]);
+		
+		
 		
 		if($S != null) $this->sd = $S->getA();
 		$this->stammdaten = $S;
@@ -1371,11 +1705,15 @@ class PDFBrief extends phynxPDF {
 		#if($_SESSION["S"]->checkForPlugin("mBrutto"))
 		#	$this->showBruttoPreise = true;
 		
+		
 		Aspect::joinPoint("after", __CLASS__, __METHOD__, array($this, $S));
 	}
 
+	/**
+	 * DONT CHANGE SIGANTURE!!
+	 */
 	function formatCurrency($language, $number, $withSymbol = false, $dezimalstellen = null){
-		return Util::formatCurrency($language, $number * $this->waehrungFaktor, $withSymbol, $dezimalstellen);
+		return Util::formatByCurrency($this->currency, $number * $this->waehrungFaktor, $this->currencyUseSymbol, $dezimalstellen);
 	}
 	
 	function AddFont($family, $style = '', $file = '', $subset = "default"){
@@ -1454,9 +1792,16 @@ class PDFBrief extends phynxPDF {
 	function Header() {
 		if($this->logoFileName != "")
 			$this->Image(FileStorage::getFilesDir()."/".$this->logoFileName, $this->logoPosition[0], $this->logoPosition[1], $this->logoWidth);
-		
-		if($this->backgroundFileName != ""){
+		#var_dump($this->backgroundFileNameSecondPage);
+		#die();
+		if($this->backgroundFileName != "" AND (!$this->backgroundFileNameSecondPage OR $this->PageNo() == 1)){
 			$this->setSourceFile(FileStorage::getFilesDir()."/".$this->backgroundFileName);
+			$tplIdx = $this->importPage(1, "/MediaBox");
+			$this->useTemplate($tplIdx, $this->backgroundPosition[0], $this->backgroundPosition[1], $this->backgroundWidth);
+		}
+		
+		if($this->backgroundFileNameSecondPage != "" AND $this->PageNo() > 1){
+			$this->setSourceFile(FileStorage::getFilesDir()."/".$this->backgroundFileNameSecondPage);
 			$tplIdx = $this->importPage(1, "/MediaBox");
 			$this->useTemplate($tplIdx, $this->backgroundPosition[0], $this->backgroundPosition[1], $this->backgroundWidth);
 		}
@@ -1470,6 +1815,7 @@ class PDFBrief extends phynxPDF {
 		$this->Ln(10);
 		if($this->PageNo() == 1){
 			$this->SetFont($this->fontDetails[0], $this->fontDetails[1], $this->fontDetails[2]);
+			$this->SetTextColorArray($this->colorDetails);
 			#-------------------- Adressen
 			if($this->positionDetailsAdresse != null){
 				$this->SetXY($this->positionDetailsAdresse[0], $this->positionDetailsAdresse[1]);
@@ -1482,6 +1828,7 @@ class PDFBrief extends phynxPDF {
 			#-------------------- Adressen
 			if($this->positionAbsenderZeile != null){
 				$this->SetFont($this->fontAbsenderZeile[0], $this->fontAbsenderZeile[1], $this->fontAbsenderZeile[2]);
+				$this->SetTextColorArray($this->colorAbsenderZeile);
 				$this->SetXY($this->positionAbsenderZeile[0], $this->positionAbsenderZeile[1]);
 				$text = ($this->sd->firmaKurz != "" ? $this->sd->firmaKurz : $this->sd->vorname." ".$this->sd->nachname).$this->absenderZeileTrennzeichen." ".$this->sd->strasse." ".$this->sd->nr.$this->absenderZeileTrennzeichen." ".$this->sd->plz." ".$this->sd->ort;
 				$this->Cell8(100 , 5 , $text,"",1);
@@ -1496,6 +1843,7 @@ class PDFBrief extends phynxPDF {
 			$this->Line(7 , 210, 11 , 210);
 		}
 		
+		$this->SetTextColorArray($this->colorHeader);
 		if($this->positionFirmaSchriftzug != null) {
 			$this->SetXY($this->positionFirmaSchriftzug[0], $this->positionFirmaSchriftzug[1]);
 			
@@ -1518,6 +1866,7 @@ class PDFBrief extends phynxPDF {
 		if($this->PageNo() > 1 AND $this->VarsGRLBM != null){
 			$this->printGRLBM($this->VarsGRLBM);
 			
+			$this->setXY($this->positionPosten2teSeite[0], $this->positionPosten2teSeite[1] + 200);
 			$this->setXY($this->positionPosten2teSeite[0], $this->positionPosten2teSeite[1]);
 		}
 	}
@@ -1554,6 +1903,8 @@ class PDFBrief extends phynxPDF {
 	function Footer() {
 		if($this->positionFooter == null) return;
 		
+		$this->SetTextColorArray($this->colorFooter);
+		
 	    if($this->footerShowLine) $this->Line($this->positionFooter[0] , $this->positionFooter[1], 210 - $this->positionFooter[0] , $this->positionFooter[1]);
 		$this->SetY($this->positionFooter[1] + 1);
 		
@@ -1565,7 +1916,8 @@ class PDFBrief extends phynxPDF {
 		
 		if(($this->sd->amtsgericht != "" OR $this->sd->handelsregister != "") AND $this->footerAmtsgerichtPosition != null){
 			$this->SetXY($this->footerAmtsgerichtPosition, $this->positionFooter[1] + 1);
-			if($this->sd->amtsgericht != "") $this->MultiCell8(0,4, "$this->labelAmtsgericht\n".$this->sd->amtsgericht."\n".$this->sd->handelsregister);
+			if($this->sd->amtsgericht != "")
+				$this->MultiCell8(0,4, "$this->labelAmtsgericht\n".$this->sd->amtsgericht."\n".$this->sd->handelsregister);
 			else $this->MultiCell8(0,4, "$this->labelHandelsregister\n".$this->sd->handelsregister);
 		}
 		
@@ -1697,9 +2049,9 @@ class PDFBrief extends phynxPDF {
 			
 			$this->SetFont($this->fontPositionenHeader[0], $this->fontPositionenHeader[1], $this->fontPositionenHeader[2]);
 			$this->Cell($widthRechnungsnummer, 5, "Rechnungsnr.", 0, 0, "R");
-			$this->Cell($widthDatum, 5, "Datum", 0 , 0);
-			$this->Cell($widthNetto, 5, "Netto", 0 , 0, "R");
-			$this->Cell($widthMwSt, 5, "Umsatzsteuer", 0 , 0, "R");
+			$this->Cell($widthDatum, 5, $this->labelDatum, 0 , 0);
+			$this->Cell($widthNetto, 5, $this->sumShowGesamtNetto ? "Netto" : "", 0 , 0, "R");
+			$this->Cell($widthMwSt, 5, $this->sumShowUmsatzsteuer ? "Umsatzsteuer" : "", 0 , 0, "R");
 			$this->Cell($widthBrutto, 5, "Brutto", 0 , 1, "R");
 
 			$this->Line($this->marginLeft , $this->getY(), 210-$this->marginRight , $this->getY());
@@ -1724,9 +2076,9 @@ class PDFBrief extends phynxPDF {
 
 				$this->Cell($widthRechnungsnummer, 5, $a->getA()->nummer, 0, 0, "R");
 				$this->Cell($widthDatum, 5, Util::formatDate($this->language, $a->getA()->datum), 0, 0);
-				$this->Cell8($widthNetto, 5, $this->cur($this->formatCurrency($this->language, $ges_netto, true)), 0, 0, "R");
-				$this->Cell(17, 5, Util::formatNumber("de_DE", $mwsts[0]*1, 2, true, false)."%", 0, 0, "R");
-				$this->Cell8($widthMwSt - 17, 5, $this->cur($this->formatCurrency($this->language, $ges_mwst, true)), 0, 0, "R");
+				$this->Cell8($widthNetto, 5, $this->sumShowGesamtNetto ? $this->cur($this->formatCurrency($this->language, $ges_netto, true)) : "", 0, 0, "R");
+				$this->Cell(17, 5, $this->sumShowUmsatzsteuer ? Util::formatNumber("de_DE", $mwsts[0]*1, 2, true, false)."%" : "", 0, 0, "R");
+				$this->Cell8($widthMwSt - 17, 5, $this->sumShowUmsatzsteuer ? $this->cur($this->formatCurrency($this->language, $ges_mwst, true)) : "", 0, 0, "R");
 				$this->Cell8($widthBrutto, 5, $this->cur($this->formatCurrency($this->language, $ges_brutto, true)), 0, 1, "R");
 
 				$desc .= ($desc != "Rechnungen " ? ", " : "").$a->getA()->nummer;
@@ -1752,18 +2104,12 @@ class PDFBrief extends phynxPDF {
 
 	// <editor-fold defaultstate="collapsed" desc="printAdresse">
 	function printAdresse(Adresse $Adresse){
-		
-		if(Session::isPluginLoaded("mSprache") AND $Adresse->A("AdresseSpracheID") != "0"){
-			$S = new Sprache($Adresse->A("AdresseSpracheID"));
-			$this->language = $S->A("SpracheSprache")."_".$S->A("SpracheLand").($S->A("SpracheWaehrungUseSymbol") == "1" ? "" : "_".$S->A("SpracheWaehrung"));
-
-			if($S->A("SpracheWaehrungFaktor") != "0" AND $S->A("SpracheWaehrungFaktor") != "" AND !$this->waehrungFaktorSet)
-				$this->waehrungFaktor = $S->A("SpracheWaehrungFaktor");
-		}
 			
 		$this->VarsEmpfaengerAdresse = $Adresse;
 		
 		if($this->positionEmpfaengerAdresse == null) return;
+		
+		$this->SetTextColorArray($this->colorEmpfaengerAdresse);
 		
 		$this->SetXY($this->positionEmpfaengerAdresse[0], $this->positionEmpfaengerAdresse[1]);
 		$this->SetFont($this->fontEmpfaengerAdresse[0], $this->fontEmpfaengerAdresse[1], $this->fontEmpfaengerAdresse[2]);
@@ -1775,35 +2121,54 @@ class PDFBrief extends phynxPDF {
 				$AP = new Ansprechpartner($this->VarsGRLBM->A("GRLBMAnsprechpartnerID"));
 			
 			if($AP != null){
+				$this->VarsEmpfaengerAnsprechpartner = $AP;
 				$Adresse->changeA("anrede", $AP->A("AnsprechpartnerAnrede"));
 				$Adresse->changeA("vorname", $AP->A("AnsprechpartnerVorname"));
 				$Adresse->changeA("nachname", $AP->A("AnsprechpartnerNachname"));
 			}
 		}
 		
-		$this->MultiCell8($this->widthEmpfaengerAdresse , 5 , $Adresse->getFormattedAddress($this->showAnredeInEmpfaenger, $this->language, $this->stammdaten),0,"L");
+		$this->MultiCell8($this->widthEmpfaengerAdresse , $this->heightEmpfaengerAdresse , $Adresse->getFormattedAddress($this->showAnredeInEmpfaenger, $this->language, $this->stammdaten),0,"L");
 	}
 	// </editor-fold>
 
-	public function printPaymentQR(){
-		#if(!$this->paymentShowQR)
+	public function printPaymentQR(Stammdaten $S, GRLBM $G){
+		if(!$this->paymentShowQR)
 			return;
 		
-		$QR = base64_encode(file_get_contents("/home/nemiah/Downloads/NoMan.jpg"));
+		if(!Session::isPluginLoaded("mBezahlCode") OR $G == null OR $G->getMyPrefix() != "R")
+			return;
 		
-		$im = imagecreatefromstring(base64_decode($QR));
+		if(Session::isPluginLoaded("mBezahlCode")){
+			require_once Util::getRootPath()."/open3A/BezahlCode/lib/src/Type/AbstractType.php";
+			require_once Util::getRootPath()."/open3A/BezahlCode/lib/src/Type/SepaTransfer.php";
+			require_once Util::getRootPath()."/open3A/BezahlCode/lib/phpqrcode.php";
+			$bezahlCode = new MarcusJaschen\BezahlCode\Type\SepaTransfer();
+
+			$bezahlCode->setTransferData(
+				$S->A("firmaLang"),
+				$S->A("IBAN"),
+				$S->A("SWIFTBIC"),
+				$G->A("bruttobetrag"),
+				$G->A("prefix")."".$G->A("nummer")." vom ".$G->A("datum")
+			);
+			
+			$temp = Util::getTempFilename("QR", "png");
+			$bezahlCode->saveBezahlCode($temp);
+			$im = imagecreatefromstring(file_get_contents($temp));
+			unlink($temp);
+		}
 		
 		$this->ImageGD($im, $this->GetMargin("L"), $this->GetY(), 25);
-		$this->SetX($this->GetMargin("L") + 30);
+		$this->SetX($this->GetMargin("L") + 25);
 		
 		$this->SetFont($this->fontTextbausteine[0], $this->fontTextbausteine[1], $this->fontTextbausteine[2]);
-		$this->MultiCell8(0, 5, "Erfassen Sie den QR-Code mit Ihrem Handy,\num diese Rechnung schnell und unkompliziert zu bezahlen.");
-		$this->Ln();
+		$this->MultiCell8(0, 5, "Erfassen Sie den QR-Code mit Ihrem Handy,\num diese Rechnung einfach und schnell zu bezahlen.", 0, "L");
+		$this->Ln(20);
 	}
 	
 	// <editor-fold defaultstate="collapsed" desc="printGRLBM">
 	public function printGRLBM(GRLBM $GRLBM){
-		#$this->VarsGRLBM = $GRLBM;
 		// <editor-fold defaultstate="collapsed" desc="Aspect:jP">
 		try {
 			$MArgs = func_get_args();
@@ -1813,8 +2178,8 @@ class PDFBrief extends phynxPDF {
 		// </editor-fold>
 		
 		
-		$GRLBM->loadMe();
-		if($GRLBM->A("isM") != "1") $Auftrag = new Auftrag($GRLBM->A("AuftragID"));
+		if($GRLBM->A("isM") != "1")
+			$Auftrag = new Auftrag($GRLBM->A("AuftragID"));
 		else {
 			$G = new GRLBM($GRLBM->A("AuftragID"));
 			$Auftrag = new Auftrag($G->A("AuftragID"));
@@ -1823,17 +2188,15 @@ class PDFBrief extends phynxPDF {
 				$this->labelLong["M"] = $this->labelZahlungserinnerung;
 		}
 		
-		if($this->positionRechnungsInfo == null) return;
+		if($this->positionRechnungsInfo == null)
+			return;
 		
 		$ud = new mUserdata();
 		$cv = $ud->getUDValue("activePDFCopyVermerk");
-		$S = Stammdaten::getActiveStammdaten();
+		$S = $this->stammdaten;
+		if(!$S)
+			$S = Stammdaten::getActiveStammdaten();
 
-		#$startX = $this->getX();
-		#$startY = $this->getY();
-		
-		#$this->SetFont('Helvetica','',9);
-		
 		$y = $this->positionRechnungsInfo[1];
 		$x = $this->positionRechnungsInfo[0];
 	
@@ -1841,7 +2204,8 @@ class PDFBrief extends phynxPDF {
 			$y = $this->positionRechnungsInfo2teSeite[1];
 			$x = $this->positionRechnungsInfo2teSeite[0];
 			
-			if($this->positionRechnungsInfo2teSeite == null) return;
+			if($this->positionRechnungsInfo2teSeite == null)
+				return;
 		}
 		
 	
@@ -1850,40 +2214,37 @@ class PDFBrief extends phynxPDF {
 			$this->SetFont($this->fontKopieLabel[0], $this->fontKopieLabel[1], $this->fontKopieLabel[2]);
 			
 			if($this->PageNo() == 1) {
-				$this->SetXY($this->positionKopieLabel[0],$this->positionKopieLabel[1]);
-				$this->Cell(40,10,$this->labelKopie,0,0,"L");
+				$this->SetXY($this->positionKopieLabel[0], $this->positionKopieLabel[1]);
+				$this->Cell8(40, 10, $this->labelKopie,0,0,"L");
 			}
+			
 			if($this->PageNo() > 1 AND $this->positionKopieLabel2teSeite != null) { 
-				$this->SetXY($this->positionKopieLabel2teSeite[0],$this->positionKopieLabel2teSeite[1]);
-				$this->Cell(40,10,$this->labelKopie,0,0,"L");
+				$this->SetXY($this->positionKopieLabel2teSeite[0], $this->positionKopieLabel2teSeite[1]);
+				$this->Cell8(40, 10, $this->labelKopie,0,0,"L");
 			}
 			
 			$this->SetTextColor(0);
 		}
 		
-		$this->SetXY($x,$y);
-		$this->SetFont($this->fontRechnungsInfo[0], "B", $this->fontRechnungsInfo[2]);
+		
 		if(isset($this->labelLong[$GRLBM->getMyPrefix(true)])){
-			$this->Cell8(30 , 6 , $this->labelLong[$GRLBM->getMyPrefix(true)], "", 0, "L");
-
 			$storedPrefix = $GRLBM->A("prefix");
 			if($storedPrefix == "A" AND $GRLBM->A("printAB") == "1") $storedPrefix = $S->getPrefix($GRLBM->getMyPrefix(true)); //Legacy
 
-			$prefix = ($GRLBM->getA()->prefix != "" ? $storedPrefix : $S->getPrefix($GRLBM->getMyPrefix()));
+			$prefix = ($GRLBM->A("prefix") != "" ? $storedPrefix : $S->getPrefix($GRLBM->getMyPrefix()));
 
 			if($GRLBM->getMyPrefix() != "M")
-				$this->Cell($this->widthRechnungsInfo - 30 , 6 , Aspect::joinPoint("belegnummer", $this, __METHOD__, array($prefix.$GRLBM->A("nummer")), $prefix.$GRLBM->A("nummer")),0,0,"R");
+				$this->contentRechnungsInfo["belegnummer"] = array($this->labelLong[$GRLBM->getMyPrefix(true)], Aspect::joinPoint("belegnummer", $this, __METHOD__, array($prefix.$GRLBM->A("nummer")), $prefix.$GRLBM->A("nummer")), array($this->fontRechnungsInfo[0], "B", $this->fontRechnungsInfo[2]));
 			else {
 				$oldGRLBM = new GRLBM($GRLBM->A("AuftragID"));
-				$this->Cell($this->widthRechnungsInfo - 30 , 6 , $prefix.$oldGRLBM->A("nummer")."/".$GRLBM->A("nummer"),0,0,"R");
+				$this->contentRechnungsInfo["belegnummer"] = array($this->labelLong[$GRLBM->getMyPrefix(true)], $prefix.$oldGRLBM->A("nummer")."/".$GRLBM->A("nummer"), array($this->fontRechnungsInfo[0], "B", $this->fontRechnungsInfo[2]));
 			}
-			
-			$y += $this->heightRechnungsInfo;
 		}
+		
 		
 		if($this->labelZuLieferschein != null AND $GRLBM->getMyPrefix() == "R"){
 			
-			$AC = anyC::get("GRLBM", "AUftragID", $GRLBM->A("AuftragID"));
+			$AC = anyC::get("GRLBM", "AuftragID", $GRLBM->A("AuftragID"));
 			$AC->addAssocV3("isR", "=", "1");
 			$AC->addAssocV3("datum", "<", $GRLBM->hasParsers ? Util::CLDateParser($GRLBM->A("datum"), "store") : $GRLBM->A("datum"));
 			$AC->addOrderV3("datum", "DESC");
@@ -1899,90 +2260,167 @@ class PDFBrief extends phynxPDF {
 			
 			$i = 0;
 			while($L = $AC->getNextEntry()){
-				$this->SetXY($x,$y);
-				$this->printInfoCell($i == 0 ? $this->labelZuLieferschein : "", $L->A("prefix").$L->A("nummer"));
-
-				$y += $this->heightRechnungsInfo;
+				if(!isset($this->contentRechnungsInfo["ZuLieferschein"]))
+					$this->contentRechnungsInfo["ZuLieferschein"] = array();
+				
+				if(isset($this->contentRechnungsInfo["ZuLieferschein"][$L->A("nummer")]))
+					continue;
+				
+				$this->contentRechnungsInfo["ZuLieferschein"][$L->A("nummer")] = array($i == 0 ? $this->labelZuLieferschein : "", $L->A("prefix").$L->A("nummer"));
 				$i++;
 			}
 		}
 		
 		
 		
-		if($this->labelDatum != null){
-			$this->SetXY($x,$y);
-			$this->printInfoCell($this->labelDatum, $GRLBM->A("datum") * 1 < 100000000 ? $GRLBM->A("datum")  : Util::formatDate($this->language, $GRLBM->A("datum")));
-		}
+		if($this->labelDatum != null)
+			$this->contentRechnungsInfo["Datum"] = array($this->labelDatum, $GRLBM->A("datum") * 1 < 100000000 ? $GRLBM->A("datum")  : Util::formatDate($this->language, $GRLBM->A("datum")));
+		
 		
 		if(($GRLBM->getMyPrefix() == "R" OR $GRLBM->getMyPrefix() == "A" OR $GRLBM->getMyPrefix() == "B") AND $this->labelLieferdatum != null){
-			$y += $this->heightRechnungsInfo;
-			$this->SetXY($x,$y);
-			
 			if(trim($GRLBM->A("lieferDatumText")) != "")
-				$this->printInfoCell($this->labelLieferdatum, $GRLBM->A("lieferDatumText"));
+				$this->contentRechnungsInfo["Lieferdatum"] = array($this->labelLieferdatum, $GRLBM->A("lieferDatumText"));
 			else
-				$this->printInfoCell($this->labelLieferdatum, $GRLBM->A("lieferDatum") * 1 < 100000000 ? $GRLBM->A("lieferDatum") : Util::CLDateParserE($GRLBM->A("lieferDatum")));
+				$this->contentRechnungsInfo["Lieferdatum"] = array($this->labelLieferdatum, $GRLBM->A("lieferDatum") * 1 < 100000000 ? $GRLBM->A("lieferDatum") : Util::CLDateParserE($GRLBM->A("lieferDatum")));
 		}
 
-		for($i = 1;$i < 10; $i++){
-			$labelName = "labelCustomField$i";
-			$fieldName = "GRLBMCustomField$i";
-			if(isset($this->$labelName) AND $this->$labelName != null AND $GRLBM->A($fieldName) != null AND $GRLBM->A($fieldName) != ""){
-				$y += $this->heightRechnungsInfo;
-				$this->SetXY($x,$y);
-				$this->printInfoCell($this->$labelName, $GRLBM->A($fieldName));
-			}
-		}
+		
+		if($S->A("ustidnr") != "" AND $this->PageNo() == 1 AND $this->labelUstID != null)
+			$this->contentRechnungsInfo["UstID"] = array(preg_match("/(^[A-Za-z]{2})/", $S->A("ustidnr")) ? $this->labelUstID : $this->labelStNr, $S->A("ustidnr"));
+		
+		
+		if($Auftrag->A("kundennummer") != "" AND $Auftrag->A("kundennummer") != "-2" AND $this->labelKundennummer != null)
+			$this->contentRechnungsInfo["Kundennummer"] = array($this->labelKundennummer, Aspect::joinPoint("kundennummer", $this, __METHOD__, array($S, $Auftrag), $S->getPrefix("K").$Auftrag->A("kundennummer")));
 
-		if($S->getA()->ustidnr != "" AND $this->PageNo() == 1 AND $this->labelUstID != null){
-			$y += $this->heightRechnungsInfo;
-			$this->SetXY($x,$y);
-			$this->printInfoCell(preg_match("/(^[A-Za-z]{2})/", $S->getA()->ustidnr) ? $this->labelUstID : $this->labelStNr, $S->A("ustidnr"));
+	
+		if($Auftrag->A("UStIdNr") != "" AND $this->PageNo() == 1)
+			$this->contentRechnungsInfo["KundeUstID"] = array(preg_match("/(^[A-Za-z]{2})/",$Auftrag->A("UStIdNr")) ? $this->labelKundeUstID : $this->labelKundeStNr, $Auftrag->A("UStIdNr"));
+		
+		
+		if($Auftrag->A("AuftragAdresseNiederlassungID") > 0 AND $this->PageNo() == 1 AND $this->labelFiliale){
+			$filiale = json_decode($Auftrag->A("AuftragAdresseNiederlassungData"));
+			$this->contentRechnungsInfo["Filiale"] = array($this->labelFiliale, $filiale->AdresseNiederlassungOrt);
 		}
-
-		$y += $this->heightRechnungsInfo;
-		$this->SetXY($x,$y);
-		$this->Cell(30 , 6 , "", "", 0, "L");
-		$this->Cell(0 , 6 , "", "", 0, "R");
+	
+		
+		if($Auftrag->A("lieferantennummer") != "" AND $this->PageNo() == 1 AND $this->labelFaxLieferant)
+			$this->contentRechnungsInfo["FaxLieferant"] = array($this->labelFaxLieferant, $this->VarsEmpfaengerAdresse->A("fax"));
+		
+		
+		if($this->VarsEmpfaengerAdresse->A("lieferantennr") != "" AND $this->labelLieferantennummer)
+			$this->contentRechnungsInfo["Lieferantennummer"] = array($this->labelLieferantennummer, $this->VarsEmpfaengerAdresse->A("lieferantennr"));
+		
+		
+		if($this->VarsEmpfaengerAdresse->A("tel") != "" AND $this->labelKundeTelefon)
+			$this->contentRechnungsInfo["KundeTelefon"] = array($this->labelKundeTelefon, $this->VarsEmpfaengerAdresse->A("tel"));
+		
+		if($this->VarsEmpfaengerAdresse->A("nachname") != "" AND $this->labelKundeAnsprechpartner){
+			$TA = clone $this->VarsEmpfaengerAdresse;
+			$TA->changeA("vorname", "");
 			
-		if($Auftrag->A("kundennummer") != "" 
-		AND $Auftrag->A("kundennummer") != "-2" 
-		#AND $this->PageNo() == 1
-		AND $this->labelKundennummer != null){
-			$y += $this->heightRechnungsInfo;
-			$this->SetXY($x,$y);
-			$this->printInfoCell($this->labelKundennummer, Aspect::joinPoint("kundennummer", $this, __METHOD__, array($S, $Auftrag), $S->getPrefix("K").$Auftrag->A("kundennummer")));
+			$this->contentRechnungsInfo["KundeAnsprechpartner"] = array($this->labelKundeAnsprechpartner, Util::CLFormatAnrede($TA, true)." ".$TA->A("nachname"));
 		}
-	
 		
-		if($Auftrag->A("UStIdNr") != "" AND $this->PageNo() == 1){
-			$y += $this->heightRechnungsInfo;
-			$this->SetXY($x,$y);
-			$this->printInfoCell(preg_match("/(^[A-Za-z]{2})/",$Auftrag->A("UStIdNr")) ? $this->labelKundeUstID : $this->labelKundeStNr, $Auftrag->A("UStIdNr"));
+		if($this->VarsEmpfaengerAdresse->A("email") != "" AND $this->labelKundeEMail)
+			$this->contentRechnungsInfo["KundeEMail"] = array($this->labelKundeEMail, $this->VarsEmpfaengerAdresse->A("email"));
+		
+		
+		if($this->VarsEmpfaengerAnsprechpartner != null AND $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerTel") != "" AND $this->labelKundeTelefon)
+			$this->contentRechnungsInfo["KundeTelefon"] = array($this->labelKundeTelefon, $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerTel"));
+		
+		if($this->VarsEmpfaengerAnsprechpartner != null AND $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerNachname") != "" AND $this->labelKundeAnsprechpartner){
+			$TA = clone $this->VarsEmpfaengerAdresse;
+			$TA->changeA("vorname", "");
+			$TA->changeA("anrede", $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerAnrede"));
+			
+			$this->contentRechnungsInfo["KundeAnsprechpartner"] = array($this->labelKundeAnsprechpartner, Util::CLFormatAnrede($TA, true)." ".$this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerNachname"));
 		}
-	
 		
-		if($Auftrag->A("lieferantennummer") != "" AND $this->PageNo() == 1){
-			$y += $this->heightRechnungsInfo;
-			$this->SetXY($x,$y);
-			$this->printInfoCell($this->labelFaxLieferant, $this->VarsEmpfaengerAdresse->A("fax"));
+		if($this->VarsEmpfaengerAnsprechpartner != null AND $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerEmail") != "" AND $this->labelKundeEMail)
+			$this->contentRechnungsInfo["KundeEMail"] = array($this->labelKundeEMail, $this->VarsEmpfaengerAnsprechpartner->A("AnsprechpartnerEmail"));
+		
+		
+		if(Session::isPluginLoaded("mProjekt") AND $this->VarsAuftrag != null AND $this->VarsAuftrag->A("ProjektID") != "0"){
+			$Projekt = new Projekt($Auftrag->A("ProjektID"));
+
+			if($this->labelBestellnummer AND $Projekt->A("ProjektBestellnummer") != "")
+				$this->contentRechnungsInfo["Bestellnummer"] = array($this->labelBestellnummer, $Projekt->A("ProjektBestellnummer"));
+			
+			
+			if($this->labelBestelldatum AND $Projekt->A("ProjektBestelldatum") != "")
+				$this->contentRechnungsInfo["Bestelldatum"] = array($this->labelBestelldatum, $Projekt->A("ProjektBestelldatum"));
 		}
 
-		for($i = 11;$i < 20; $i++){
-			$labelName = "labelCustomField$i";
-			$fieldName = "GRLBMCustomField$i";
-			if(isset($this->$labelName) AND $this->$labelName != null AND $GRLBM->A($fieldName) != null AND $GRLBM->A($fieldName) != ""){
-				$y += $this->heightRechnungsInfo;
-				$this->SetXY($x,$y);
-				$this->printInfoCell($this->$labelName, $GRLBM->A($fieldName));
+		
+		foreach($this->orderRechnungsInfo AS $col){
+			if($col == "custom1"){
+				for($i = 1;$i < 10; $i++){
+					$labelName = "labelCustomField$i";
+					$fieldName = "GRLBMCustomField$i";
+					if(isset($this->$labelName) AND $this->$labelName != null AND $GRLBM->A($fieldName) != null AND $GRLBM->A($fieldName) != ""){
+						$y += $this->heightRechnungsInfo;
+						$this->SetXY($x,$y);
+						
+						$this->printInfoCell($this->$labelName, $GRLBM->A($fieldName));
+					}
+				}
+				continue;
 			}
+			
+			if($col == "custom2"){
+				for($i = 11;$i < 20; $i++){
+					$labelName = "labelCustomField$i";
+					$fieldName = "GRLBMCustomField$i";
+					if(isset($this->$labelName) AND $this->$labelName != null AND $GRLBM->A($fieldName) != null AND $GRLBM->A($fieldName) != ""){
+						$y += $this->heightRechnungsInfo;
+						$this->SetXY($x,$y);
+						
+						$this->printInfoCell($this->$labelName, $GRLBM->A($fieldName));
+					}
+				}
+				
+				continue;
+			}
+			
+			if($col == "leer"){
+				$y += $this->heightRechnungsInfo;
+				
+				continue;
+			}
+			
+			if($col == "ZuLieferschein"){
+				if(!isset($this->contentRechnungsInfo[$col]))
+					continue;
+
+				foreach($this->contentRechnungsInfo[$col] AS $v){
+					$y += $this->heightRechnungsInfo;
+					$this->SetXY($x,$y);
+
+					$this->printInfoCell($v[0], $v[1], isset($v[2]) ? $v[2] : null);
+				}
+				
+				continue;
+			}
+			
+			if(!isset($this->contentRechnungsInfo[$col]))
+				continue;
+			
+			if(!is_array($this->contentRechnungsInfo[$col]))
+				$this->contentRechnungsInfo[$col] = array($this->contentRechnungsInfo[$col]);
+			
+			$y += $this->heightRechnungsInfo;
+			$this->SetXY($x,$y);
+			
+			$this->printInfoCell($this->contentRechnungsInfo[$col][0], $this->contentRechnungsInfo[$col][1], isset($this->contentRechnungsInfo[$col][2]) ? $this->contentRechnungsInfo[$col][2] : null);
 		}
+		
 
 		$this->GRLBMNextLine = array($x, $y + 4);
 		
 		Aspect::joinPoint("after", $this, __METHOD__, $MArgs);
 		
-		if($this->PageNo() == 1) $this->setXY($this->positionTextbausteinOben[0], $this->positionTextbausteinOben[1]);
+		if($this->PageNo() == 1)
+			$this->setXY($this->positionTextbausteinOben[0], $this->positionTextbausteinOben[1]);
 		#else $this->setXY($this->positionTextbausteinOben[0], $this->positionTextbausteinOben[1]);
 	}
 	// </editor-fold>
@@ -2014,9 +2452,14 @@ class PDFBrief extends phynxPDF {
 			}
 		}
 
+		$D = new Datum($date);
+		$D->subWeek();
 		$TBText = str_replace("{+1Woche}", Util::CLDateParser($date + 7 * 3600 * 24), $TBText);
 		$TBText = str_replace("{+2Wochen}", Util::CLDateParser($date + 14 * 3600 * 24), $TBText);
 		$TBText = str_replace("{+3Wochen}", Util::CLDateParser($date + 21 * 3600 * 24), $TBText);
+		$TBText = str_replace("{+6Wochen}", Util::CLDateParser($date + 42 * 3600 * 24), $TBText);
+		$TBText = str_replace("{Kalenderwoche}", date("W", $date), $TBText);
+		$TBText = str_replace("{Kalenderwoche-1}", date("W", $D->time()), $TBText);
 
 		if($this->VarsAuftrag != null){
 			$U = new User($this->VarsAuftrag->A("UserID"));
@@ -2058,6 +2501,7 @@ class PDFBrief extends phynxPDF {
 		$TBText = $this->replaceVariables($T);
 		
 		$this->SetFont($this->fontTextbausteine[0], $this->fontTextbausteine[1], $this->fontTextbausteine[2]);
+		$this->SetTextColorArray($this->colorTextbausteine);
 		
 		if($TBText != "" AND substr($TBText, 0, 1) != "<")
 			$this->MultiCell8($this->widthTextbaustein , 5 , $TBText,0,"L");
@@ -2069,7 +2513,7 @@ class PDFBrief extends phynxPDF {
 			$this->ln(3);
 		}
 		
-		Aspect::joinPoint("appendToTextbaustein", __CLASS__, __METHOD__, array($this, $T));
+		Aspect::joinPoint("appendToTextbaustein", $this, __METHOD__, array($this->TextbausteinNummer, $T));
 
 		$this->ln();
 		$this->TextbausteinNummer++;
@@ -2082,6 +2526,7 @@ class PDFBrief extends phynxPDF {
 			$MArgs = func_get_args();
 			return Aspect::joinPoint("around", $this, __METHOD__, $MArgs);
 		} catch (AOPNoAdviceException $e) {}
+		Aspect::joinPoint("before", $this, __METHOD__, $MArgs);
 		
 		while($EP = $P->getNextEntry()){
 			if($EP->A("rabatt") != null AND $EP->A("rabatt") > 0){
@@ -2116,7 +2561,7 @@ class PDFBrief extends phynxPDF {
 			$this->AddPage();
 
 		$this->SetFont($this->fontSumHeaders[0], $this->fontSumHeaders[1], $this->fontSumHeaders[2]);
-
+		$this->SetTextColorArray($this->colorSum);
 		if($type != "Kalk"){# OR $type == "A" OR $type == "G" OR $type == "B"){
 			#print_r($this->gesamt_brutto);
 			$sum_mwst = 0;
@@ -2259,7 +2704,9 @@ class PDFBrief extends phynxPDF {
 
 						foreach($this->gesamt_netto as $key => $value){
 							$this->SetXY($this->sumBetragPosition, $firstLineY + $i * 5);
+							$this->SetFont($this->fontSumHeaders[0], $this->fontSumHeaders[1], $this->fontSumHeaders[2]);
 							$this->Cell(15, 5, Util::formatNumber($this->language, $key*1, 2, true, false)."%", 0, 0, "R");
+							$this->SetFont($this->fontSumBetrag[0], $this->fontSumBetrag[1], $this->fontSumBetrag[2]);
 							$this->Cell8($this->sumBetragWidth - 15, 5, $this->cur($this->formatCurrency($this->language, $value * ($key / 100), true)), 0, 0, "R");
 
 							$i++;
@@ -2269,15 +2716,15 @@ class PDFBrief extends phynxPDF {
 					if($this->sumShowAlleNettopreise){
 						$this->SetXY($labelsRight, $firstLineY);
 						$this->Cell8(50, 5, $this->labelGesamtNetto, 0, 0, "R");
-						$this->SetFont($this->fontSumBetrag[0], $this->fontSumBetrag[1], $this->fontSumBetrag[2]);
+						$this->SetFont($this->fontSumUmsatzsteuer[0], $this->fontSumUmsatzsteuer[1], $this->fontSumUmsatzsteuer[2]);
 
 						$this->Cell8($this->sumBetragWidth, 5, $this->cur($this->formatCurrency($this->language, $sum_netto, true)), 0, 0, "R");
 						$i++;
-
+						
 						foreach($this->gesamt_netto as $key => $value){
 							$this->SetXY($labelsRight, $firstLineY + $i * 5);
-							$this->Cell8(35, 5, Util::formatNumber($this->language, $key*1, 2, true, false)."% ".$this->labelUmsatzsteuer.":", 0, 0, "R");
-							$this->Cell8(15, 5, $this->cur($this->formatCurrency($this->language, $value, true)), 0, 0, "R");
+							$this->Cell8(25, 5, Util::formatNumber($this->language, $key*1, 2, true, false)."% ".$this->labelUmsatzsteuer.":", 0, 0, "R");
+							$this->Cell8(25, 5, $this->cur($this->formatCurrency($this->language, $value, true)), 0, 0, "R");
 							$this->Cell8($this->sumBetragWidth, 5, $this->cur($this->formatCurrency($this->language, $value * ($key / 100), true)), 0, 0, "R");
 
 							$i++;
@@ -2370,7 +2817,7 @@ class PDFBrief extends phynxPDF {
 			$this->Cell8($this->widthEK2,5,$this->labelRabatt,0,0,"R");
 			$this->Cell8($this->widthVK,5,$this->labelGes." ".$this->labelVK,0,0,"R");
 			$this->ln();
-
+			
 			$this->rabatt = str_replace(",",".",$this->rabatt);
 			$this->rabattInW = str_replace(",",".",$this->rabattInW);
 			$this->leasingrate = str_replace(",",".",$this->leasingrate);
@@ -2470,30 +2917,34 @@ class PDFBrief extends phynxPDF {
 		
 		$type = $this->VarsGRLBM->getMyPrefix();
 		
+		$this->SetX($this->marginLeft);
 		$this->SetFont($this->fontPositionenHeader[0], $this->fontPositionenHeader[1], $this->fontPositionenHeader[2]);
+		$this->SetTextColorArray($this->colorPositionenHeader);
 		#$fpdf->SetFont('Helvetica','BI',9);
 		
 		Aspect::joinPoint("front", $this, __METHOD__);
 		
-		if($type != "Kalk" AND $this->widthPosition)
-			$this->Cell8($this->widthPosition, 5, $this->labelPosition, 0, 0, $this->alignPosition);
-				
-		if($this->widthMenge)
-			$this->Cell8($this->widthMenge, 5, $this->labelMenge, 0, 0, "R");
 
 		if($type != "Kalk"){
-				
-			if($this->widthEinheit)
-				$this->Cell8($this->widthEinheit, 5, $this->labelEinheit, 0, 0, $this->alignEinheit);
-		
-			if($this->widthMenge2)
-				$this->Cell8($this->widthMenge2, 5, $this->labelMenge2, 0, 0, $this->alignMenge2);
-				
-			if($this->widthArtikelnummer)
-				$this->Cell8($this->widthArtikelnummer, 5, $this->labelArtikelnummer, 0, 0, "L");
-				
-			if($this->widthBezeichnung)
-				$this->Cell8($this->widthBezeichnung, 5, $this->labelBezeichnung, 0, 0, "L");
+			foreach($this->orderCols AS $col){
+				if($col == "Position" AND $this->widthPosition)
+					$this->Cell8($this->widthPosition, 5, $this->labelPosition, 0, 0, $this->alignPosition);
+
+				if($col == "Menge" AND $this->widthMenge)
+					$this->Cell8($this->widthMenge, 5, $this->labelMenge, 0, 0, "R");
+
+				if($col == "Einheit" AND $this->widthEinheit)
+					$this->Cell8($this->widthEinheit, 5, $this->labelEinheit, 0, 0, $this->alignEinheit);
+
+				if($col == "Menge2" AND $this->widthMenge2)
+					$this->Cell8($this->widthMenge2, 5, $this->labelMenge2, 0, 0, $this->alignMenge2);
+
+				if($col == "Artikelnummer" AND $this->widthArtikelnummer)
+					$this->Cell8($this->widthArtikelnummer, 5, $this->labelArtikelnummer, 0, 0, "L");
+
+				if($col == "Bezeichnung" AND $this->widthBezeichnung)
+					$this->Cell8($this->widthBezeichnung, 5, $this->labelBezeichnung, 0, 0, "L");
+			}
 			
 			Aspect::joinPoint("tail", $this, __METHOD__);
 				
@@ -2505,31 +2956,11 @@ class PDFBrief extends phynxPDF {
 					if($this->$col)
 						$this->Cell8($this->$col,5,$this->$label, 0, 0, "R");
 				}
-				/*if($this->widthEinzelpreis)
-					$this->Cell8($this->widthEinzelpreis,5,$this->labelEinzelpreis, 0, 0, "R");
-				
-				if($this->widthEinzelpreisNetto)
-					$this->Cell8($this->widthEinzelpreisNetto,5,$this->labelEinzelpreisNetto, 0, 0, "R");
-					
-				if($this->widthRabatt)
-					$this->Cell8($this->widthRabatt,5,$this->labelRabatt, 0, 0, "R");
-					
-				if($this->widthRabattpreis)
-					$this->Cell8($this->widthRabattpreis,5,$this->labelRabattpreis, 0, 0, "R");
-				
-				if($this->widthGesamtNettoPosten)
-					$this->Cell8($this->widthGesamtNettoPosten, 5, $this->labelGesamtNettoPosten, 0, 0, "R");
-					
-				if($this->widthMwStBetrag)
-					$this->Cell8($this->widthMwStBetrag, 5, $this->labelMwStBetrag, 0, 0, "R");
-				
-				if($this->widthGesamt)
-					$this->Cell8($this->widthGesamt, 5, $this->labelGesamt, 0, 0, "R");
-					
-				if($this->widthMwSt)
-					$this->Cell8($this->widthMwSt, 5, $this->labelMwSt, 0, 0, "R");*/
 			}
 		} else {
+			if($this->widthMenge)
+				$this->Cell8($this->widthMenge, 5, $this->labelMenge, 0, 0, "R");
+			
 			#$fpdf->Cell(28,5,"Einheit",0,0,"L");
 			if($this->widthBezeichnung)
 				$this->Cell8($this->widthBezeichnung, 5, $this->labelBezeichnung, 0, 0, "L");
@@ -2550,9 +2981,10 @@ class PDFBrief extends phynxPDF {
 		$this->Line($this->marginLeft , $lineY, $this->w - $this->marginRight , $lineY);
 		
 		if($this->currentArticle != null){
+			$this->SetX($this->marginLeft);
 			$this->SetFont($this->fontPositionenArtikelname[0], $this->fontPositionenArtikelname[1], $this->fontPositionenArtikelname[2]);
-			$this->Cell8(0,5,"Fortsetzung ".$this->currentArticle->A("name"));
-			$this->ln();
+			$this->Cell8(0, 5, mb_substr("Fortsetzung ".$this->currentArticle->A("name"), 0, 85).(mb_strlen("Fortsetzung ".$this->currentArticle->A("name")) > 85 ? "..." : ""));
+			$this->ln(5);
 		}
 		if($this->isInPostenBeschreibung)
 			$this->SetFont($this->fontPositionenBeschreibung[0], $this->fontPositionenBeschreibung[1], $this->fontPositionenBeschreibung[2]);
@@ -2604,8 +3036,8 @@ class PDFBrief extends phynxPDF {
 		else
 			$this->SetFont($useFont[0], $useFont[1], $useFont[2]);
 		
-		$this->Cell8(30 , 6 , $label, "", 0, "L");
-		$this->Cell($this->widthRechnungsInfo - 30 , 6 , $content, "", 0, "R");
+		$this->Cell8(30 , $this->heightRechnungsInfo , $label, "", 0, "L");
+		$this->Cell8($this->widthRechnungsInfo - 30 , $this->heightRechnungsInfo , $content, "", 0, "R");
 	}
 	
 	function printMahnungTable(GRLBM $GRLBM){
@@ -2741,6 +3173,8 @@ class PDFBrief extends phynxPDF {
 		
 		$this->setSourceFile(FileStorage::getFilesDir().$this->appendPDFFile);
 		
+		$this->backgroundFileName = null;
+		$this->backgroundFileNameSecondPage = null;
 		$pages = explode(" ", $this->appendPDFPages);
 		foreach($pages AS $page){
 			$page = trim($page);

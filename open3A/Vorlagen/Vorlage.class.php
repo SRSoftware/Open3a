@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class Vorlage extends PersistentObject implements iCloneable {
 	public function saveMe($checkUserData = true, $output = false) {
@@ -40,7 +40,8 @@ class Vorlage extends PersistentObject implements iCloneable {
 		$parameters .= $this->getParameters("align");
 		$parameters .= $this->getParameters("background");
 		$parameters .= $this->getParameters("append");
-		
+		$parameters .= $this->getParameters("color");
+		$parameters .= $this->getOrder();
 		
 		if($this->A("VorlagePosition") != ""){
 			$positions = json_decode($this->A("VorlagePosition"));
@@ -85,13 +86,13 @@ class Vorlage extends PersistentObject implements iCloneable {
 		file_put_contents($dir.$this->className().".class.php", '<?php
 class '.$this->className().' extends Vorlage_any implements iVorlage {
 
-	function __construct($S = null){
+	function __construct($S = null, $SpracheID = null){
 		'.$fonts.'
 		'.html_entity_decode($parameters, ENT_COMPAT, "UTF-8").'
 		'.($rename != "" ? "if(\$S != null) { $rename
 		}" : "").'
 		
-		parent::__construct($S);
+		parent::__construct($S, $SpracheID);
 	}
 
 	function getLabel(){
@@ -130,6 +131,36 @@ class '.$this->className().' extends Vorlage_any implements iVorlage {
 		return parent::deleteMe();
 	}
 	
+	private function getOrder(){
+		$parameters = "";
+		if($this->A("VorlageOrder") != ""){
+			$D = array();
+			foreach(explode(";", trim($this->A("VorlageOrder"), ";")) AS $v){
+				$ex = explode(":", $v);
+				if(!$ex[1])
+					continue;
+				
+				$D[$ex[0]] = $ex[1];
+			}
+			
+			foreach($D AS $N => $A){
+				$ex = explode(",", $A);
+				
+				$parameters .= '
+		$this->'.$N.' = array(';
+				
+				foreach($ex AS $k => $E)
+					$parameters .= '
+			"'.$E.'"'.($k < count($ex) - 1 ? "," : "");
+				
+				$parameters .= '
+		);';
+			}
+		}
+		
+		return $parameters;
+	}
+	
 	private function getParameters($find){
 		$parameters = "";
 		if($this->A("Vorlage".ucfirst($find)) != ""){
@@ -138,7 +169,7 @@ class '.$this->className().' extends Vorlage_any implements iVorlage {
 				if(strpos($value->name, "optional") === 0)
 					continue;
 				
-				if((strpos($value->name, "show") === 0 OR strpos($value->name, "sumShow") === 0 OR strpos($value->name, "footerShow") === 0) AND $value->name != "showDezimalstellen" AND $value->name != "showDezimalstellenMenge")
+				if((strpos($value->name, "show") === 0 OR strpos($value->name, "sumShow") === 0 OR strpos($value->name, "footerShow") === 0) AND $value->name != "showDezimalstellen" AND $value->name != "showDezimalstellenMenge" AND $value->name != "showImagesOn")
 					$parameters .= '
 		$this->'.$value->name.' = '.($value->value == "1" ? "true" : "false").';';
 				else {

@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
 class mUserdata extends anyC {
 	function __construct() {
@@ -109,7 +109,7 @@ class mUserdata extends anyC {
 		return $labels;
 	}
 	
-	public static function getPluginSpecificData($forPlugin){
+	public static function getPluginSpecificData($forPlugin, $value = null){
 		if(Session::currentUser() === null)
 			return array();
 		
@@ -124,6 +124,10 @@ class mUserdata extends anyC {
 			$A = $sUD->getA();
 			$labels[$A->name] = $A->wert;
 		}
+		
+		if($value != null)
+			return isset($labels[$value]);
+		
 		return $labels;
 	}
 	
@@ -198,14 +202,26 @@ class mUserdata extends anyC {
 	}
 
 	public static function getGlobalSettingValue($name, $defaultValue = null){
+		$useCache = false;
+		#echo $name."\n";
+		if($name == "activeCustomizer")
+			$useCache = true;
+		
+		if($useCache AND SpeedCache::inStaticCache("mUserdata::getGlobalSettingValue".$name))
+			return SpeedCache::getStaticCache("mUserdata::getGlobalSettingValue".$name);
+		
 		$UD = new mUserdata();
 		$UD->addAssocV3("UserID", "=", "-1");
 		$UD->addAssocV3("name", "=", $name);
 
 		$e = $UD->getNextEntry();
-		if($e == null) return $defaultValue;
+		if($e == null){
+			SpeedCache::setStaticCache("mUserdata::getGlobalSettingValue".$name, $defaultValue);
+			return $defaultValue;
+		}
 		
-		return $e->getA()->wert;
+		SpeedCache::setStaticCache("mUserdata::getGlobalSettingValue".$name, $e->A("wert"));
+		return $e->A("wert");
 		
 	}
 
@@ -253,10 +269,17 @@ class mUserdata extends anyC {
 		if($_SESSION["S"]->getCurrentUser() == null) return;#throw new Exception("No user authenticated with the system!");
 		if($_SESSION["S"]->isUserAdmin()) return;
 		
-		$UD = new mUserdata();
-		$UD->addAssocV3("wert","=",$restriction);
-		$UD->addAssocV3("UserID","=",$_SESSION["S"]->getCurrentUser()->getID());
-		$sUD = $UD->getNextEntry();
+		if(SpeedCache::inStaticCache("checkRestrictionOrDie$restriction"))
+			$sUD = SpeedCache::getStaticCache("checkRestrictionOrDie$restriction", true);
+		else {
+			$UD = new mUserdata();
+			$UD->addAssocV3("wert", "=", $restriction);
+			$UD->addAssocV3("UserID", "=", Session::currentUser()->getID());
+			$sUD = $UD->getNextEntry();
+			
+			SpeedCache::setStaticCache("checkRestrictionOrDie$restriction", $sUD);
+		}
+		
 		if($sUD != null)
 			Red::errorD("Diese Aktion ist nicht erlaubt!");
 	}

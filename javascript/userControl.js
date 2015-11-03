@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- *  2007 - 2014, Rainer Furtmeier - Rainer@Furtmeier.IT
+ *  2007 - 2015, Rainer Furtmeier - Rainer@Furtmeier.IT
  */
  
  
@@ -68,7 +68,7 @@ var userControl = {
 					$j.jStorage.deleteKey('phynxUserData');
 			   
 				loadMenu();
-				DesktopLink.loadContent();
+				//DesktopLink.loadContent();
 				contentManager.clearHistory();
 			//$('loginPassword').value = "";
 			}
@@ -131,7 +131,7 @@ var userControl = {
 			}
 			
 			loadMenu();
-			DesktopLink.loadContent();
+			//DesktopLink.loadContent();
 		}, "", true, function(){
 			$j('#loginCertOptions').toggle();
 		});
@@ -148,7 +148,7 @@ var userControl = {
 				return;
 			
 			loadMenu();
-			DesktopLink.loadContent();
+			//DesktopLink.loadContent();
 		});
 	},
 	
