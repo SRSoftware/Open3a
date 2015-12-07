@@ -230,7 +230,7 @@ class mStammdatenGUI extends mStammdaten implements iGUIHTML2 {
 	}
 	
 	public static function aktivParser($w, $E){
-		$B = new Button("Stammdaten aktiv", "/images/i2/ok.gif", "icon");
+		$B = new Button("Stammdaten aktiv", "./images/i2/ok.gif", "icon");
 		
 		if(!$w){
 			$B = new Button("Stammdaten aktivieren", "./images/i2/notok.gif", "icon");

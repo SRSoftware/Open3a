@@ -65,6 +65,11 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 		if(Session::isPluginLoaded("mBrutto") AND !Session::isPluginLoaded("mLohngruppe"))
 			$A->isBrutto = mUserdata::getUDValueS("DefaultValueArtikelisBrutto", "1");
 		
+		if(Session::isPluginLoaded("mMwSt")){
+			$A->mwst = 0;
+			$A->isBrutto = 0;
+		}
+		
 		#$A->sachkonto = mUserdata::getGlobalSettingValue("DVArtikelSachkonto", "8400");;
 		
 		return $A;
@@ -75,7 +80,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 			$this->A->bruttopreis = $this->hasParsers ? Util::CLNumberParserZ($this->A->preis,"store") : $this->A->preis;
 			$this->setParser("preis","Util::nothingParser");
 			
-			$mwst = $this->A->mwst;
+			$mwst = $this->getMwSt();
 			if(isset($this->A->steuer))
 				$mwst += $this->hasParsers ? Util::CLNumberParserZ($this->A->steuer,"store") : $this->A->steuer;
 			
@@ -93,7 +98,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 			$this->A->bruttopreis = $this->hasParsers ? Util::CLNumberParserZ($this->A->preis,"store") : $this->A->preis;
 			$this->setParser("preis","Util::nothingParser");
 			#echo $this->A->steuer;
-			$mwst = $this->A->mwst;
+			$mwst = $this->getMwSt();
 			if(isset($this->A->steuer))
 				$mwst += $this->hasParsers ? Util::CLNumberParserZ($this->A->steuer,"store") : $this->A->steuer;
 			
@@ -126,10 +131,10 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	/**
 	 * PRICE CALCULATIONS
 	 */
-	public function getArtikelEK1($LieferantID = null){
+	public function getArtikelEK1($LieferantID = null, $VarianteArtikelID = 0){
 		$LP = null;
 		if(Session::isPluginLoaded("mLieferant"))
-			$LP = mLieferant::getCheapestEK($this->getID(), $LieferantID);
+			$LP = mLieferant::getCheapestEK($this->getID(), $LieferantID, $VarianteArtikelID);
 		
 		if($LP === null){
 			if($this->hasParsers)
@@ -137,7 +142,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 			
 			return $this->A("EK1");
 		}
-
+		
 		return $LP;
 	}
 
@@ -156,9 +161,9 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 			return $this->hasParsers ? Util::CLNumberParserZ($this->A("preis"), "store") : $this->A("preis");
 	}
 	
-	public function getGesamtEK1($LieferantID = null, $withStueckliste = true){
-		$ownPrice = $this->getArtikelEK1($LieferantID) + $this->getLohnEK();
-		
+	public function getGesamtEK1($LieferantID = null, $withStueckliste = true, $VarianteArtikelID = 0){
+		$ownPrice = $this->getArtikelEK1($LieferantID, $VarianteArtikelID) + $this->getLohnEK();
+
 		if($withStueckliste)
 			$ownPrice += $this->getGesamtEK1Stueckliste ($LieferantID);
 		
@@ -198,6 +203,21 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 		return Util::kRound($gesamtEK1 * ($aufschlag / 100));
 	}
 
+	public function getMwSt(){
+		if(Session::isPluginLoaded("mMwSt")){
+			$S = Stammdaten::getActiveStammdaten();
+			if($S == null)
+				return 0;
+			
+			$mwst = MwSt::findByBasics($this->A("mwStKategorieID"), $S->A("land"), "");
+			if($mwst == null)
+				return 0;
+				
+			return $mwst->A("MwStValue");
+		}
+		
+		return $this->A("mwst");
+	}
 	
 	public function getGesamtNettoVK($withStueckliste = true, $LieferantID = null){
 		$ownPrice = $this->getArtikelLP($LieferantID) + $this->getAufschlagListenpreis($LieferantID) + $this->getLohnEK() + $this->getAufschlagGesamt($LieferantID);
@@ -221,7 +241,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	}
 
 	public function getGesamtBruttoVK($withStueckliste = true, $LieferantID = null){
-		$ownPrice = Util::kRound($this->getGesamtNettoVK(false, $LieferantID) * (1 + $this->A("mwst") / 100));
+		$ownPrice = Util::kRound($this->getGesamtNettoVK(false, $LieferantID) * (1 + $this->getMwSt() / 100));
 		if($this->A("isBrutto"))
 			$ownPrice = $this->A("bruttopreis");
 		
@@ -245,7 +265,7 @@ class Artikel extends PersistentObject implements iCloneable, iDeletable {
 	}
 	
 	public function getEtiketten(){
-		return array(array("ART".($this->getID() + 10000), $this->A("artikelnummer"), $this->A("name"), $this->A("gebinde")));
+		return array(array(array("ART".($this->getID() + 10000), $this->A("EAN")), $this->A("artikelnummer"), $this->A("name"), $this->A("gebinde")));
 	}
 }
 ?>

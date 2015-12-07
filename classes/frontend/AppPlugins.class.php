@@ -102,7 +102,7 @@ class AppPlugins {
 		$extraPlugins = Environment::getS("pluginsExtra", array());
 		if(Applications::activeApplication() == "Zeus" OR Applications::activeApplication() == "nil")
 			$extraPlugins = array();
-		
+
 		$allowedPlugins = array_merge($allowedPlugins, $extraPlugins);
 		
 		

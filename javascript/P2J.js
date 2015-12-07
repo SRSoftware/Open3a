@@ -238,14 +238,17 @@ var Ajax = {
 	build: null,
 	counter: 0,
 	lastRequest: null,
+	lastRequestTime: Date.now(),
 	
 	Request: function(anurl, options){
 		Ajax.counter++;
 		Ajax.lastRequest = options.parameters;
+		Ajax.lastRequestTime = Date.now();
 		var counter = Ajax.counter;
 		var start;
 		$j.ajax({
-			url: anurl+(Ajax.physion != "default" ? (anurl.indexOf("?") > -1 ? "&": "?")+"physion="+Ajax.physion : ""), 
+			url: anurl+(Ajax.physion != "default" ? (anurl.indexOf("?") > -1 ? "&": "?")+"physion="+Ajax.physion : ""),
+			//timeout: 10000,
 			beforeSend: function(){
 				start = new Date().getTime();
 			},
@@ -698,4 +701,9 @@ $j(document).on('mouseover', '.bigButton', function(event) {
 		}
 		
 	}, event);
+});
+
+$j(document).on("keyup", function(){
+	if(Date.now() - Ajax.lastRequestTime > 5 * 60 * 1000)
+		contentManager.rmePCR('Menu','','autoLogoutInhibitor','');
 });

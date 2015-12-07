@@ -34,6 +34,9 @@ class T {
 		if(!function_exists("bindtextdomain"))
 			return $text;
 		
+		if(!function_exists("bind_textdomain_codeset"))
+			return $text;
+		
 		if(trim($text) == "" OR trim($text) == "&nbsp;")
 			return $text;
 		#echo self::$currentDomain.":".$text."<br />";
@@ -69,6 +72,9 @@ class T {
 	
 	public static function load($pluginPath, $domain = ""){
 		if(!function_exists("bindtextdomain") OR strpos($_SERVER["SERVER_SOFTWARE"], "BitWebServer") !== false)
+			return;
+		
+		if(!function_exists("bind_textdomain_codeset"))
 			return;
 		
 		self::$domainPaths[$domain] = $pluginPath."/locale";

@@ -89,6 +89,9 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		#$gui->type("oldArtikelID","hidden");
 		$gui->type("createArtikel", "checkbox");
 
+		$B = new Button("Großes Textfeld", "./images/i2/fullscreen.png", "icon");
+		$B->onclick("TextEditor.showTextarea(\$j('[name=beschreibung]'), '1xPostenForm');");
+		$gui->addFieldButton("beschreibung", $B);
 		
 		$Stammdaten = mStammdaten::getActiveStammdaten();
 		try {
@@ -166,10 +169,13 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		foreach($userLabels as $key => $value)
 			$gui->label($key,$value);
 			
-		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK")){
-			$gui->type("EK1", "hidden");
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK"))
 			$gui->type("EK2", "hidden");
-		}
+		
+		
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK1"))
+			$gui->type("EK1", "hidden");
+		
 		
 		#$kat = new Kategorien();
 		#$kat->addAssocV3("type","=","mwst");
@@ -227,7 +233,7 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		$GRLBM = new GRLBM($GRLBMID);
 		$Artikel = new Artikel($ArtikelID);
 		
-		$B = new Button("Abbrechen", "stop");
+		$B = new Button("Beenden", "stop");
 		$B->style("float:right;margin:5px;");
 		$B->onclick(OnEvent::closePopup("Posten"));
 		
@@ -238,19 +244,19 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 			$c = LieferantGUI::popupSelection($GRLBM, $ArtikelID);
 			if($c != "")
 				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
-			}
+		}
 		
 		if(Session::isPluginLoaded("mVariante")){
 			$c = VarianteArtikelGUI::popupSelection($GRLBM, $ArtikelID);
 			if($c != "")
 				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
-			}
+		}
 		
 		if(Session::isPluginLoaded("mSeriennummer")){
 			$c = SeriennummerGUI::popupSelection($GRLBM, $ArtikelID);
 			if($c != "")
 				$html .= "<div class=\"sub\" style=\"width:250px;display:inline-block;vertical-align:top;\">$c</div>";
-			}
+		}
 		
 		$aspect = Aspect::joinPoint("selections", $this, __METHOD__, array($ArtikelID, $GRLBMID), array());
 		if(is_array($aspect))
@@ -261,10 +267,16 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		$IAID = new HTMLInput("ArtikelID", "hidden", $ArtikelID);
 		$IGID = new HTMLInput("GRLBMID", "hidden", $GRLBMID);
 		
-		$BOK = new Button("Posten\nerstellen", "bestaetigung");
+		$BOK = new Button("Posten erstellen\nund beenden", "bestaetigung");
 		$BOK->style("float:right;margin:10px;");
 		$BOK->rmePCR("Posten", "-1", "popupOptionsDo", array("joinFormFields('newPostenForm')")/*array($ArtikelID, $GRLBMID, "\$j('[name=lieferantSelection]').length ? \$j('[name=lieferantSelection]:checked').val() : 0", "\$j('[name=variantSelection]').length ? \$j('[name=variantSelection]:checked').val() : 0", "\$j('[name=seriennummerSelection]').length ? \$j('[name=seriennummerSelection]').val() : ''")*/, "function(t){ Auftrag.checkBestand(t); contentManager.loadFrame('subframe', 'GRLBM', $GRLBMID); ".OnEvent::closePopup("Posten")." }");
-		echo "<form id=\"newPostenForm\">".$html.$IAID.$IGID."</form>".$BOK.OnEvent::script("\$j('#editDetailsPosten').css('width', \$j('#editDetailsPosten .sub').length * 250);");
+		
+		$BOK2 = new Button("Posten erstellen\nund nochmal", "navigation");
+		$BOK2->style("float:right;margin:10px;");
+		$BOK2->rmePCR("Posten", "-1", "popupOptionsDo", array("joinFormFields('newPostenForm')"), "function(t){ Auftrag.checkBestand(t); Auftrag.reloadBeleg($GRLBMID);/*contentManager.loadFrame('subframe', 'GRLBM', $GRLBMID);*/  }");
+		$BOK2->className("backgroundColor4");
+		
+		echo "<form id=\"newPostenForm\">".$html.$IAID.$IGID."</form>".$BOK.$BOK2.OnEvent::script("\$j('#editDetailsPosten').css('width', \$j('#editDetailsPosten .sub').length * 250);");
 	}
 	
 	public function popupOptionsDo($data){
@@ -306,11 +318,11 @@ class PostenGUI extends Posten implements iGUIHTML2 {
 		$P->skipLieferantTest = true;
 		$P->skipSeriennummernTest = true;
 		$PostenID = $P->newFromArtikel($ArtikelID, $GRLBMID, $menge, null, null, null, $VarianteArtikelID, $LieferantID);
-		
-		if($VarianteArtikelID != 0){
-			$V = new VarianteArtikel($VarianteArtikelID);
-			$V->fixPosten($ArtikelID, $PostenID);
-		}
+				
+		#if($VarianteArtikelID != 0){
+		#	$V = new VarianteArtikel($VarianteArtikelID);
+		#	$V->fixPosten($ArtikelID, $PostenID);
+		#}
 		
 		if(Session::isPluginLoaded("mSeriennummer") AND trim($Seriennummern) != "")
 			$S->doSell(explode("\n", trim($Seriennummern)), "Artikel", $ArtikelID, $GRLBMID, $PostenID);

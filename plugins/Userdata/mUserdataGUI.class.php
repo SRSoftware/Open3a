@@ -80,7 +80,7 @@ class mUserdataGUI extends mUserdata implements iGUIHTML2, icontextMenu {
 			if($w == "") $w = "Plugin ".str_replace("cantDelete","",$p)." nicht geladen<br /><small style=\"color:grey;\">Dieses Plugin steht in der aktiven Anwendung nicht zur Verfügung.</small>";
 		}
 		
-		if(stristr($w,"antCreate")) {
+		if(stristr($w,"antCreate") AND !stristr($w,"pluginSpecific")) {
 			$html .= "<img title=\"".(isset($text["kann nicht erstellen"]) ? $text["kann nicht erstellen"] : "kann nicht erstellen")."\" style=\"float:left;margin-left:10px;margin-right:5px;\" src=\"./images/i2/new.gif\" />";
 			$w = str_replace("cantCreate","",$w);
 			$isRestricted = true;
@@ -166,7 +166,7 @@ class mUserdataGUI extends mUserdata implements iGUIHTML2, icontextMenu {
 		$BR->popup("", "Rollen", "mUserdata", "-1", "rolesPopup", array("lastLoadedLeft"));
 		
 		
-		return "
+		return "<p class=\"highlight\">Achtung: Die möglichen Berechtigungen sind von der geladenen Anwendung und ihren Plugins abhängig. Melden Sie sich an einer anderen Anwendung an, um weitere Berechtigungen zu vergeben.</p>"."
 		<!--<input type=\"button\" class=\"bigButton backgroundColor3\" title=\"".(isset($text["Feld\numbenennen"]) ? $text["Feld\numbenennen"] : "Feld\numbenennen")."\" onclick=\"phynxContextMenu.start(this, 'mUserdata','2','".$text["Umbenennung"].":');\" style=\"float:right;background-image:url(./images/navi/relabel.png);\" />
 		<button class=\"bigButton backgroundColor3\" value=\"".(isset($text["Einschränkung\nhinzufügen"]) ? $text["Einschränkung\nhinzufügen"] : "")."\" onclick=\"phynxContextMenu.start(this, 'mUserdata','1','".$text["Einschränkung"].":');\" style=\"margin-bottom:10px;background-image:url(./images/navi/restrictions.png);\" /><br />-->
 		$BN$BS<br><br>
