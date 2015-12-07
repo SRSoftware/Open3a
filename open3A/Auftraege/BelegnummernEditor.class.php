@@ -29,8 +29,8 @@ class BelegnummernEditor extends Auftrag implements iReNr {
 
 	public static function getNextNumber($type, Auftrag $Auftrag = null) {
 		$S = Stammdaten::getActiveStammdaten();
-		$DB = new DBStorage();
-		$C = $DB->getConnection();
+		#$DB = new DBStorage();
+		#$C = $DB->getConnection();
 		
 		switch ($S->A("belegNummerResetR")) {
 			case "":

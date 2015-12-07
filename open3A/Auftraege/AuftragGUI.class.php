@@ -53,6 +53,7 @@ class AuftragGUI extends Auftrag implements iGUIHTML2 {
 		$i = 0;
 		foreach($this->getBelegArten() AS $B){
 			if(isset($pSpecData["pluginSpecificCanOnlySeeKalk"]) AND $B != "Kalk") continue;
+			if(isset($pSpecData["pluginSpecificCantCreateR"]) AND $B == "R") continue;
 
 			$_SESSION["BPS"]->setACProperty("type", $B);
 			$tests = new mGRLBMGUI();
@@ -195,6 +196,8 @@ class AuftragGUI extends Auftrag implements iGUIHTML2 {
 			$BEdit->id("AuftragProjektEditButton");
 			if($this->A("ProjektID") == "0")
 				$BEdit->style("float:right;margin-top:4px;display:none;");
+			
+			Aspect::joinPoint("alterProjekt", $this, __METHOD__, array($BNew, $BEdit, $PI));
 			
 			$ADTab2->addLV("Projekt:", $BNew.$BEdit.$PI);
 		}
@@ -450,6 +453,7 @@ class AuftragGUI extends Auftrag implements iGUIHTML2 {
 	    
 		
 		$Subject = Aspect::joinPoint("alterSubject", null, __METHOD__, array($A, $Subject), $Subject);
+		$Body = Aspect::joinPoint("alterBody", null, __METHOD__, array($A, $Body, $Stammdaten), $Body);
 		
 		return array($Subject, $Body);
 	}
@@ -518,20 +522,27 @@ class AuftragGUI extends Auftrag implements iGUIHTML2 {
 		foreach($Recipients AS $k => $R)
 			$Empfaenger[$k] = $R[0]." <$R[1]>";
 		
+		$Empfaenger[-1] = "Anderer Empfänger";
+		
 		$IR = new HTMLInput("EMailRecipientSelection", "select", $AnsprechpartnerID, $Empfaenger);
-		$IR->onchange("Auftrag.windowMail(".$this->getID().", '$GRLBMID', '$sendVia', this.value);");
-		if(count($Empfaenger) == 1)
-			$IR = $Empfaenger[0];
+		$IR->onchange("if(this.value != '-1') Auftrag.windowMail(".$this->getID().", '$GRLBMID', '$sendVia', this.value); else { \$j('[name=otherRecipient]').show(); \$j('#regularRecipient').hide(); }");
+		#if(count($Empfaenger) == 1)
+		#	$IR = $Empfaenger[0];
 		
 		$Stammdaten = mStammdaten::getActiveStammdaten();
 		list($Subject, $Body) = AuftragGUI::getEMailTBs($AnAdresse, $Stammdaten, $G);
 		list($fromName, $from) = AuftragGUI::getEMailSender($Stammdaten);
 		$recipient = $Recipients[$AnsprechpartnerID][1];
 		
+		$IO = new HTMLInput("otherRecipient", "text");
+		$IO->style("display:none;margin-top:5px;");
+		$IO->placeholder("E-Mail-Adresse");
+		#$Recipients[-1] = array("", "", $IO);
+		
 		$tab = new HTMLTable(2);
 		$tab->setColWidth(1, "120px;");
 		$tab->addLV("Absender:", "$fromName &lt;$from&gt;");
-		$tab->addLV("Empfänger:", $IR."<br /><small style=\"color:grey;\">$recipient<br />".$Recipients[$AnsprechpartnerID][2]."</small>");
+		$tab->addLV("Empfänger:", $IR."<br />$IO<div id=\"regularRecipient\"><small style=\"color:grey;\">$recipient<br />".$Recipients[$AnsprechpartnerID][2]."</small></div>");
 		$ud = new mUserdata();
 		if($_SESSION["S"]->getCurrentUser()->A("UserEmail") != "" AND $ud->getUDValue("BCCToUser", "false") == "true")
 			$tab->addLV("BCC:",$_SESSION["S"]->getCurrentUser()->A("UserEmail"));
@@ -543,25 +554,71 @@ class AuftragGUI extends Auftrag implements iGUIHTML2 {
 		$tab->addRowClass("backgroundColor0");
 
 		$BAbort = new Button("Abbrechen","stop");
-		$BAbort->onclick("Popup.close('$this->ID', 'EMailPreview');");
+		$BAbort->onclick(OnEvent::closePopup("Auftrag"));
 
 		$BGo = new Button("E-Mail\nsenden","okCatch");
 		$BGo->style("float:right;");
 		if($sendVia == "E-Mail")
-			$BGo->onclick((strpos($Body, "<p") !== false ? "\$j('#EMailBody$this->ID').val(tinyMCE.get('EMailBody$this->ID').getContent());" : "")." Auftrag.directMail('$this->ID', $GRLBMID, '$recipient', $('EMailSubject$this->ID').value, \$j('#EMailBody$this->ID').val()); Popup.close('$this->ID', 'EMailPreview');");
+			$BGo->onclick((strpos($Body, "<p") !== false ? "\$j('#EMailBody$this->ID').val(tinyMCE.get('EMailBody$this->ID').getContent());" : "")." Auftrag.directMail('$this->ID', $GRLBMID, '$recipient', $('EMailSubject$this->ID').value, \$j('#EMailBody$this->ID').val(), \$j('#mailAttachments input:checked').serialize(), \$j('[name=otherRecipient]').val()); ".OnEvent::closePopup("Auftrag"));
 		if($sendVia == "sign")
-			$BGo->onclick((strpos($Body, "<p") !== false ? "\$j('#EMailBody$this->ID').val(tinyMCE.get('EMailBody$this->ID').getContent());" : "")." Auftrag.plSign('$this->ID', $GRLBMID, '$recipient', $('EMailSubject$this->ID').value, \$j('#EMailBody$this->ID').val()); Popup.close('$this->ID', 'EMailPreview');");
+			$BGo->onclick((strpos($Body, "<p") !== false ? "\$j('#EMailBody$this->ID').val(tinyMCE.get('EMailBody$this->ID').getContent());" : "")." Auftrag.plSign('$this->ID', $GRLBMID, '$recipient', $('EMailSubject$this->ID').value, \$j('#EMailBody$this->ID').val(), \$j('[name=otherRecipient]').val()); ".OnEvent::closePopup("Auftrag"));
 
 		$tab->addRow(array($BGo.$BAbort));
 		$tab->addRowColspan(1, 2);
 
-		echo $tab;
+		echo "<div style=\"width:400px;display:inline-block;vertical-align:top;\">$tab</div>";
 		
 		if(strpos($Body, "<p") !== false)
 			echo OnEvent::script("
 				setTimeout(function(){
 				".tinyMCEGUI::editorMail ("EMailBody$this->ID", null, "undo redo | pastetext | bold italic underline | fullscreen code")."
 			}, 100);");
+		
+		
+		
+		$T = new HTMLTable(3, "Anhänge");
+		$T->setTableID("mailAttachments");
+		$T->weight("light");
+		$T->setColWidth(1, 20);
+		$T->setColWidth(3, 20);
+		$T->maxHeight(400);
+		$B = new Button("PDF", "./images/i2/pdf.gif", "icon");
+		$G = new GRLBM($GRLBMID);
+		$T->addRow(array($B, $G->A("prefix").$G->A("nummer")));
+		
+		if($sendVia == "E-Mail"){
+			$AC = anyC::get("GRLBM", "AuftragID", $this->getID());
+			$AC->addAssocV3("GRLBMID", "!=", $GRLBMID);
+			$AC->addAssocV3("isM", "=", "0");
+			while($G = $AC->n()){
+				$I = new HTMLInput("attach_".$G->getID(), "checkbox", 0);
+
+				$T->addRow(array($B, $G->A("prefix").$G->A("nummer"), $I));
+			}
+		}
+		
+    	if($sendVia == "E-Mail" AND Session::isPluginLoaded("mFile") AND mUserdata::getUDValueS("sendBelegViaEmailAttachments", "false") == "true"){
+			$B = new Button("Datei", "./plugins/Files/File18.png", "icon");
+			$D = new mDateiGUI();
+			$D->addAssocV3("DateiClassID", "=", $GRLBMID);
+			$D->addAssocV3("DateiClass", "=", "GRLBM");
+
+			while($f = $D->getNextEntry())
+				$T->addRow(array($B, basename($f->A("DateiPath")), ""));
+			
+			$attachmentsDir = FileStorage::getFilesDir()."GRLBMID".str_pad($GRLBMID, 4, "0", STR_PAD_LEFT);
+			if(file_exists($attachmentsDir)){
+				$dir = new DirectoryIterator($attachmentsDir);
+				foreach ($dir as $file) {
+					if($file->isDot()) continue;
+					if($file->isDir()) continue;
+
+					$T->addRow(array($B, $file->getFilename(), ""));
+				}
+			}
+    	}
+		
+		echo "<div style=\"width:195px;display:inline-block;vertical-align:top;\">$T</div>";
 	}
 	
 	static function getNextNumber($t){

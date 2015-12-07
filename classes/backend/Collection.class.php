@@ -430,6 +430,11 @@ abstract class Collection {
 		$this->Adapter->setSelectStatement("searchFields",$fields);
 	}
 	
+	function addSearchCustom($field, $op, $value, $bracketGroup){
+		if($this->Adapter == null) $this->loadAdapter();
+		$this->Adapter->addSelectStatement("searchCustom", array($field, $op, $value, $bracketGroup));
+	}
+	
 	/**
 	 * Sets the string to search for.
 	 * 

@@ -108,36 +108,30 @@ class Posten extends PersistentObject {
 		if($_SESSION["S"]->checkForPlugin("mBrutto"))
 			$A->isBrutto = mUserdata::getUDValueS("DefaultValuePostenisBrutto", "1");
 
-		$AC = anyC::get("Kategorie", "type", "mwst");
-		$AC->addAssocV3("isDefault", "=", "1");
-		$M = $AC->getNextEntry();
-		if($M != null){
-			$defaultMwst = Util::parseFloat("de_DE",str_replace("%","",$M->A("name")));
-			$A->mwst = $this->hasParsers ? Util::CLNumberParserZ($defaultMwst) : $defaultMwst;
-		}
+		#$AC = anyC::get("Kategorie", "type", "mwst");
+		#$AC->addAssocV3("isDefault", "=", "1");
+		#$M = $AC->getNextEntry();
+		#if($M != null){
+		#	$defaultMwst = Util::parseFloat("de_DE",str_replace("%","",$M->A("name")));
+		#	$A->mwst = $this->hasParsers ? Util::CLNumberParserZ($defaultMwst) : $defaultMwst;
+		#}
 		
-		if($GRLBM != null)
+			
+		if($GRLBM != null){
 			$A->GRLBMID = $GRLBM->getID();
-		
-		if(Session::isPluginLoaded("mStammdaten") AND !Session::isPluginLoaded("mMwSt") AND $GRLBM != null){
+			
 			$Auftrag = new Auftrag($GRLBM->A("AuftragID"));
 			$Adresse = new Adresse($Auftrag->A("AdresseID"));
-
-			$ISO3166_2 = ISO3166::getCodeToCountry($Adresse->A("land"));
-			$S = Stammdaten::getActiveStammdaten();
-			if($Adresse->A("land") != ISO3166::getCountryToCode($S->A("land")) AND $Adresse->A("land") != ""){
-				if($Auftrag->A("UStIdNr") != "" AND EUCountries::usesVATNumer($ISO3166_2))
-					$A->mwst = $this->hasParsers ? Util::CLNumberParserZ(0) : 0;
-
-				if($Auftrag->A("UStIdNr") == "" AND !EUCountries::usesVATNumer($ISO3166_2))
-					$A->mwst = $this->hasParsers ? Util::CLNumberParserZ(0) : 0;
-			}
-		}
+			$calc = self::calcMwst($Adresse, $Auftrag->A("UStIdNr"));
+			
+			$A->mwst = $this->hasParsers ? Util::CLNumberParserZ($calc) : $calc;
+		} else
+			$A->mwst = $this->hasParsers ? Util::CLNumberParserZ(self::calcMwst()) : self::calcMwst();
 
 		return $A;
 	}
 	
-	public function newFromProvision($ProvisionID,$GRLBMID){
+	/*public function newFromProvision($ProvisionID,$GRLBMID){
 		$this->A = $this->newAttributes();
 		
 		$prov = new Provision($ProvisionID);
@@ -163,7 +157,7 @@ class Posten extends PersistentObject {
 
 		$provA->RechnungID = $GRLBMID;
 		$prov->saveMe();
-	}
+	}*/
 	
 	public $skipVariantTest = false;
 	public $skipLieferantTest = false;
@@ -210,6 +204,7 @@ class Posten extends PersistentObject {
 		}
 		
 		$showOptions = Aspect::joinPoint("showPopup", $this, __METHOD__, array($ArtikelID), $showOptions);
+		$keepName = false;
 		
 		if($showOptions)
 			Red::redirect(OnEvent::popup("Postenoptionen", "Posten", "-1", "popupOptions", array("'$ArtikelID'", "'$GRLBMID'"), "", "{ignoreWidth: true}"));
@@ -217,6 +212,8 @@ class Posten extends PersistentObject {
 		$this->recalcNetto = false;
 		
 		$aAttr = $a->getA();
+		if($aAttr == null)
+			return false;
 		$aArray = PMReflector::getAttributesArray($aAttr);
 		$pArray = PMReflector::getAttributesArray($this->A);
 
@@ -231,37 +228,55 @@ class Posten extends PersistentObject {
 		$this->A->VarianteArtikelID = $VarianteArtikelID;
 		$this->A->PostenLieferantID = $LieferantID === null ? 0 : $LieferantID;
 		
-		$_SESSION["BPS"]->setActualClass("mArtikelGUI");
-		$bps = $_SESSION["BPS"]->getAllProperties();
+		#$_SESSION["BPS"]->setActualClass("mArtikelGUI");
+		#$bps = $_SESSION["BPS"]->getAllProperties();
 
-		if($kundennummer == null AND $bps != -1 AND $_SESSION["BPS"]->isACPropertySet("kundennummer"))
-			$kundennummer = $bps["kundennummer"];
+		if($kundennummer == null AND $Auftrag->A("kundennummer"))
+			$kundennummer = $Auftrag->A("kundennummer");
 
 		if($GRLBM->getMyPrefix() != "O" AND $GRLBM->getMyPrefix() != "P"){
-			$this->A->EK1 = $a->getGesamtEK1($LieferantID);
+			$this->A->EK1 = $a->getGesamtEK1($LieferantID, true, $VarianteArtikelID);
 			$this->A->preis = $a->getGesamtNettoVK(true, $LieferantID);
 			$this->A->bruttopreis = $a->getGesamtBruttoVK(true, $LieferantID);
 		} else {
 			$this->A->EK1 = 0;
-			$this->A->preis = $a->getGesamtEK1($Auftrag->A("lieferantennummer") != "0" ? $Auftrag->A("lieferantennummer")  : null);
+			$this->A->preis = $a->getGesamtEK1($Auftrag->A("lieferantennummer") != "0" ? $Auftrag->A("lieferantennummer")  : null, true, $VarianteArtikelID);
 			
 			if($Auftrag->A("lieferantennummer") != "0"){
 				$AC = anyC::get("LieferantPreis", "LieferantPreisArtikelID", $a->getID());
 				$AC->addAssocV3 ("LieferantPreisLieferantID", "=", $Auftrag->A("lieferantennummer"));
+				$AC->addAssocV3("LieferantPreisVarianteArtikelID", "=", $VarianteArtikelID);
 				$LP = $AC->n();
 				
 				if($LP != null){
 					if($LP->A("LieferantPreisArtikelnummer") != "")
 						$this->A->artikelnummer = $LP->A("LieferantPreisArtikelnummer");
 					
-					if($LP->A("LieferantPreisArtikelname") != "")
+					if($LP->A("LieferantPreisArtikelname") != ""){
 						$this->A->name = $LP->A("LieferantPreisArtikelname");
+						$keepName = true;
+					}
 				}
+				
+				if($LP === null AND $VarianteArtikelID != 0){
+					$AC = anyC::get("LieferantPreis", "LieferantPreisArtikelID", $a->getID());
+					$AC->addAssocV3 ("LieferantPreisLieferantID", "=", $Auftrag->A("lieferantennummer"));
+					$AC->addAssocV3("LieferantPreisVarianteArtikelID", "=", 0);
+					$LP = $AC->n();
+
+					if($LP != null){
+						if($LP->A("LieferantPreisArtikelnummer") != "")
+							$this->A->artikelnummer = $LP->A("LieferantPreisArtikelnummer");
+
+						if($LP->A("LieferantPreisArtikelname") != ""){
+							$this->A->name = $LP->A("LieferantPreisArtikelname");
+						#	$keepName = true;
+						}
+					}
+				}
+				
 			}
 		}
-		
-		#if(property_exists($this->A, "PostenSortOrder")) //Fix unsorted new Posten after sorting, moved to customizer!
-		#	$this->A->PostenSortOrder = 127;
 		
 		if($kundennummer != null){
 			if(Session::isPluginLoaded("mPreisgruppe")){
@@ -337,23 +352,22 @@ class Posten extends PersistentObject {
 		}
 
 		if(Session::isPluginLoaded("mStammdaten") AND !Session::isPluginLoaded("mMwSt")){
-			$ISO3166_2 = ISO3166::getCodeToCountry($Adresse->A("land"));
+			#$ISO3166_2 = ISO3166::getCodeToCountry($Adresse->A("land"));
 			$S = Stammdaten::getActiveStammdaten();
 			if($Adresse->A("land") != ISO3166::getCountryToCode($S->A("land")) AND $Adresse->A("land") != ""){
 				if($this->A("isBrutto") == "1"){
 					$this->A->preis = $this->A->bruttopreis / (1 + $this->A->mwst / 100);
 					$this->A->isBrutto = 0;
 				}
-
-				if($this->useAutoMwSt AND $Auftrag->A("UStIdNr") != "" AND EUCountries::usesVATNumer($ISO3166_2))
+				
+				if($this->useAutoMwSt){
 					$this->A->mwst = 0;
-
-				if($this->useAutoMwSt AND $Auftrag->A("UStIdNr") == "" AND EUCountries::usesVATNumer($ISO3166_2)){
-					$this->A->mwst = 0;
-					$this->A->mwstCheck = 1;
+					if($Auftrag->A("UStIdNr") == "")
+						$this->A->mwstCheck = 1;
 				}
 			}
 		}
+		
 		
 		if(Session::isPluginLoaded("mStammdaten") AND Session::isPluginLoaded("mMwSt")){
 			$this->A->mwst = 0;
@@ -362,17 +376,35 @@ class Posten extends PersistentObject {
 			if($MwSt != null){
 				$this->A->mwst = $MwSt->A("MwStValue");
 				$this->A->erloeskonto = $MwSt->A("MwStErloeskonto");
+				
+				if($this->A->isBrutto){
+					$this->A->preis = $this->A->bruttopreis;
+					if($this->hasParsers)
+						$this->A->preis = Util::CLNumberParserZ($this->A->bruttopreis);
+					
+					$this->recalcNetto = true;
+				}
 			}
 		}
+		
 		
 		if($this->A->differenzbesteuert == "1"){
 			$this->A->differenzbesteuertMwSt = $this->A->mwst;
 			$this->A->mwst = 0;
 		}
 		
-		Aspect::joinPoint("newPosten", $this, __METHOD__, array($GRLBM, $Auftrag));
+		Aspect::joinPoint("newPosten", $this, __METHOD__, array($GRLBM, $Auftrag, $a));
 		
 		$id = $this->newMe();
+		
+		if($VarianteArtikelID != 0){# AND $GRLBM->getMyPrefix() != "O" AND $GRLBM->getMyPrefix() != "P"){
+			$keepPrice = false;
+			if($GRLBM->getMyPrefix() == "O" OR $GRLBM->getMyPrefix() == "P")
+				$keepPrice = true;
+			
+			$V = new VarianteArtikel($VarianteArtikelID);
+			$V->fixPosten($ArtikelID, $id, $keepPrice, $keepName);
+		}
 		
 		$P = new Posten($id);
 		if(Session::isPluginLoaded("mDArtikel")){
@@ -382,7 +414,29 @@ class Posten extends PersistentObject {
 				
 			}
 		}
+		
 		return $id;
+	}
+	
+	public static function calcMwst(Adresse $Adresse = null, $UStIdNr = null){
+		$mwst = 0;
+		
+		$AC = anyC::get("Kategorie", "type", "mwst");
+		$AC->addAssocV3("isDefault", "=", "1");
+		$M = $AC->getNextEntry();
+		if($M != null)
+			$mwst = Util::parseFloat("de_DE",str_replace("%", "", $M->A("name")));
+		
+		if($Adresse == null)
+			return $mwst;
+		
+		if(Session::isPluginLoaded("mStammdaten") AND !Session::isPluginLoaded("mMwSt")){
+			$S = Stammdaten::getActiveStammdaten();
+			if($Adresse->A("land") != ISO3166::getCountryToCode($S->A("land")) AND $Adresse->A("land") != "")
+				$mwst = 0;
+		}
+		
+		return $mwst;
 	}
 	
 	protected function saveMultiEditField($field, $value){
@@ -435,21 +489,22 @@ class Posten extends PersistentObject {
 		
 		if($this->A->isBrutto == "1" AND $this->recalcNetto){
 			$this->A->bruttopreis = $preis;
-			$this->setParser("preis","Util::nothingParser");
+			if($this->hasParsers)
+				$this->setParser("preis","Util::nothingParser");
 			$this->A->preis = $this->A->bruttopreis / (1 + $mwst / 100);
 		}
 
 		$G = new GRLBM($this->A->GRLBMID);
 		$G->loadMe();
 		
-		if($G->getA()->isPayed == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1"))
+		if($G->getA()->isPayed == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1" OR $G->A("isL") == "1"))
 			die("alert:AuftraegeMessages.A004");
 
 		$newid = parent::newMe($checkuserdata, false);
 		
 		$P = new Posten($newid, false);
 		
-		if(Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1")
+		if(!$this->A("keinLagerbestand") AND !Session::isPluginLoaded("mLagerbestandWare") AND Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1")
 			if(!Session::isPluginLoaded("mStueckliste") OR (Session::isPluginLoaded("mStueckliste") AND !Stueckliste::has($this->A("oldArtikelID"))))
 				$this->messageBestand = Lagerbestand::updateMain(
 					$this->A("oldArtikelID"),
@@ -468,6 +523,8 @@ class Posten extends PersistentObject {
 					$this->updateLagerOn,
 					$this->A("VarianteArtikelID"),
 					$this->updateLagerDoParent);
+			
+			Aspect::joinPoint("alterLager", $this, __METHOD__, array($P, $G));
 		}
 		
 		if(self::$recalcBeleg){
@@ -497,18 +554,19 @@ class Posten extends PersistentObject {
 
 		if($this->A->isBrutto == "1" AND $this->recalcNetto){
 			$this->A->bruttopreis = $preis;
-			$this->setParser("preis","Util::nothingParser");
+			if($this->hasParsers)
+				$this->setParser("preis","Util::nothingParser");
 			$this->A->preis = $this->A->bruttopreis / (1 + $mwst / 100);
 		}
 		
 		$G = new GRLBM($this->A->GRLBMID);
 		#$G->loadMe();
 		
-		if($G->A("isPayed") == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1"))
+		if($G->A("isPayed") == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1" OR $G->A("isL") == "1"))
 			die("alert:AuftraegeMessages.A005");
 
 		
-		if(Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1"){
+		if(!$this->A("keinLagerbestand") AND !Session::isPluginLoaded("mLagerbestandWare") AND Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1"){
 			$PostenAlt = new Posten($this->getID(), false);
 			$menge = (($this->hasParsers ? Util::CLNumberParserZ($this->A("menge"), "store") : $this->A("menge")) - $PostenAlt->A("menge")) * -1;
 			if($menge != 0){
@@ -531,6 +589,8 @@ class Posten extends PersistentObject {
 						$this->A("VarianteArtikelID"),
 						$this->updateLagerDoParent);
 			}
+			
+			Aspect::joinPoint("alterLager", $this, __METHOD__, array($PostenAlt, $G));
 		}
 		
 		parent::saveMe($checkuserdata, false);
@@ -550,12 +610,12 @@ class Posten extends PersistentObject {
 		$G = new GRLBM($this->A->GRLBMID);
 		$G->loadMe();
 		
-		if($G->getA()->isPayed == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1"))
+		if($G->getA()->isPayed == "1" AND ($G->A("isR") == "1" OR $G->A("isB") == "1" OR $G->A("isL") == "1"))
 			die("alert:AuftraegeMessages.A003");
 		
 		$P = new Posten($this->getID(), false);
 		
-		if(Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1"){
+		if(!$this->A("keinLagerbestand") AND !Session::isPluginLoaded("mLagerbestandWare") AND Session::isPluginLoaded("mLager") AND $this->A("oldArtikelID") > 0){# AND $G->A("is".$this->updateLagerOn) == "1"){
 			if(!Session::isPluginLoaded("mStueckliste") OR (Session::isPluginLoaded("mStueckliste") AND !Stueckliste::has($this->A("oldArtikelID"))))
 				$this->messageBestand = Lagerbestand::updateMain(
 					$this->A("oldArtikelID"),
@@ -580,6 +640,8 @@ class Posten extends PersistentObject {
 				#$nummern = implode("\n", $serials);
 				mSeriennummerGUI::doPutIn($serials, "Artikel", $this->A("oldArtikelID"));
 			}
+			
+			Aspect::joinPoint("alterLager", $this, __METHOD__, array($P, $G));
 		}
 		
 		
@@ -591,7 +653,8 @@ class Posten extends PersistentObject {
 		}
 	}
 	
-	public function cloneMe(){
+	private static $kundenpreise = array();
+	public function cloneMe($updatePrices = false, $kundennummer = 0){
 		$this->setParser("menge","Util::nothingParser");
 		$this->setParser("preis","Util::nothingParser");
 		#$this->setParser("bruttopreis","Util::nothingParser");
@@ -605,8 +668,38 @@ class Posten extends PersistentObject {
 		foreach($bps AS $key => $value)
 			if(isset($this->A->$key))
 				$this->A->$key = $value;
-				
+		
 		$this->recalcNetto = false;
+		
+		if($updatePrices AND $this->A("oldArtikelID") != "0"){
+			$A = new Artikel($this->A("oldArtikelID"));
+			$this->changeA("preis", !$this->A("isBrutto") ? $A->getGesamtNettoVK() : $A->getGesamtBruttoVK());
+			$this->recalcNetto = true;
+			
+			try {
+				if(Session::isPluginLoaded("Kundenpreise") AND $kundennummer > 0){
+					if(!isset(self::$kundenpreise[$kundennummer])){
+						$Ks = anyC::get("Kundenpreis");
+						$Ks->addAssocV3("kundennummer", "=", $kundennummer);
+						$Ks->lCV3();
+						self::$kundenpreise[$kundennummer] = $Ks;
+					}
+					
+					
+					while($K = self::$kundenpreise[$kundennummer]->n()){
+						if($K->A("ArtikelID") != $this->A("oldArtikelID"))
+							continue;
+						
+						$this->changeA("preis", $K->A("kundenPreis"));
+						$this->recalcNetto = true;
+					}
+					
+					self::$kundenpreise[$kundennummer]->resetPointer();
+
+				}
+			} catch(ClassNotFoundException $e){	}
+		}
+			
 		return $this->newMe();
 	}
 }

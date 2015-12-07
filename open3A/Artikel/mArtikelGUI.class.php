@@ -20,7 +20,7 @@
 class mArtikelGUI extends mArtikel implements iGUIHTMLMP2, iAutoCompleteHTML, icontextMenu, iCategoryFilter, iOrderByField, iSearchFilter {
 
 	public $isJoined = "";
-	public $searchFields = array("t1.name", "artikelnummer", "beschreibung", "bemerkung");
+	public $searchFields = array("t1.name", "artikelnummer", "beschreibung", "bemerkung", "artikelnummerHersteller", "EAN");
 	public static $ids = array();
 	public static $artikelMitStueckliste = array();
 	public static $artikelMitLieferant = array();
@@ -278,11 +278,19 @@ class mArtikelGUI extends mArtikel implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 			$id = substr($query, 3) - 10000;
 			$this->addAssocV3("ArtikelID", "=", $id);
 		} else {
+			$search = array("name","artikelnummer", "EAN", "artikelnummerHersteller");
+
+			if(Session::isPluginLoaded("mLieferant")){
+				$LP = anyC::getFirst("LieferantPreis", "LieferantPreisArtikelnummer", $query);
+				if($LP)
+					$this->addSearchCustom("ArtikelID", "=", $LP->A("LieferantPreisArtikelID"), "OR");
+			}
+		
 			$this->setSearchStringV3($query);
-			$this->setSearchFieldsV3(array("name", "artikelnummer", "EAN"));
+			$this->setSearchFieldsV3($search);
 		}
 		
-		$this->setFieldsV3(array("name AS label", "IF(artikelnummer = '', CONCAT('ART', ArtikelID + 10000), artikelnummer) AS value", "CONCAT(IF(artikelnummer = '', CONCAT('ART', ArtikelID + 10000), artikelnummer), '<br />', beschreibung) AS description"));
+		$this->setFieldsV3(array("name AS label", "IF(artikelnummer = '', CONCAT('ART', t1.ArtikelID + 10000), artikelnummer) AS value", "CONCAT(IF(artikelnummer = '', CONCAT('ART', t1.ArtikelID + 10000), artikelnummer), '<br />', beschreibung) AS description"));
 
 		if($attributeName == "artikelnummer")
 			$this->setFieldsV3(array("artikelnummer AS label", "name AS value", "name AS description"));
@@ -314,6 +322,12 @@ class mArtikelGUI extends mArtikel implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 		if($settings != "")
 			$fields = explode(",", $settings);
 		
+		if(Session::isPluginLoaded("mLieferant")){
+			$LP = anyC::getFirst("LieferantPreis", "LieferantPreisArtikelnummer", $query);
+			if($LP)
+				$this->addSearchCustom("ArtikelID", "=", $LP->A("LieferantPreisArtikelID"), "OR");
+		}
+
 		$this->setSearchFieldsV3($fields);#array(/*"t".(2 + strlen($this->isJoined)).".name",*/"t1.name"/*,"bemerkung","beschreibung"*/,"artikelnummer","beschreibung"));
 		#$this->addAssocV3("t2.name","LIKE", "%$query%","AND","1");
 		$this->setFieldsV3(array("t1.name", "gebinde", "bemerkung", "beschreibung", "artikelnummer"));
@@ -366,7 +380,7 @@ class mArtikelGUI extends mArtikel implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 	public static function parserACName($w, $l, $p){
 		$p = HTMLGUI::getArrayFromParametersString($p);
 		$p[0] = str_replace("\n", " ", $p[0]);
-		return self::buttonInfoOptions(new Artikel($p[3]))."<div style=\"width:100px;overflow:hidden;float:right;color:grey;text-align:right;\">$p[2]<br /><small>$p[1]</small></div>".$w."<br /><small style=\"color:grey;\">".(strlen($p[0]) > 45 ? substr($p[0], 0, 45)."..." : $p[0])."</small>";
+		return self::buttonInfoOptions(new Artikel($p[3]))."<div style=\"float:right;color:grey;text-align:right;\">$p[2]<br /><small>$p[1]</small></div>".$w."<br /><small style=\"color:grey;\">".(strlen($p[0]) > 45 ? substr($p[0], 0, 45)."..." : $p[0])."</small>";
 	}
 	
 	public function setLieferantFilter($LieferantID){

@@ -543,6 +543,11 @@ class PDFBrief extends phynxPDF {
 	 * @optional true
 	 */
 	public $labelUebertrag = "Übertrag";
+	/**
+	 * @label Rabatt Beleg
+	 * @editor true
+	 */
+	public $labelRabattGlobal = "Rabatt";
 	
 	/**
 	 * @group Postenüberschrift
@@ -1441,6 +1446,7 @@ class PDFBrief extends phynxPDF {
 	
 	public $currentArticle = null;
 	public $isInPosten = false;
+	public $isInContent = false;
 	public $isInPostenBeschreibung = false;
 	public $isInPostenBezeichnung = false;
 	public $absenderZeileTrennzeichen = ",";
@@ -1896,6 +1902,10 @@ class PDFBrief extends phynxPDF {
 		if(property_exists($this, "inHTML") AND $this->inHTML !== false)
 			$this->SetFont($this->inHTML[0], $this->inHTML[1], $this->inHTML[2]);
 		
+		if($this->isInContent){
+			$this->SetY(50);
+		}
+		
 	}
 	// </editor-fold>
 
@@ -1951,8 +1961,10 @@ class PDFBrief extends phynxPDF {
 	
 	// <editor-fold defaultstate="collapsed" desc="printContent">
 	public function printContent($content){
+		$this->isInContent = true;
 		$this->setXY($this->positionTextbausteinOben[0], $this->positionTextbausteinOben[1]);
 		$this->writeHTML($content);
+		$this->isInContent = false;
 	}
 	// </editor-fold>
 
@@ -2159,6 +2171,9 @@ class PDFBrief extends phynxPDF {
 			unlink($temp);
 		}
 		
+		if($this->GetY() + 25 >  $this->h - $this->GetMargin("B"))
+			$this->AddPage ();
+
 		$this->ImageGD($im, $this->GetMargin("L"), $this->GetY(), 25);
 		$this->SetX($this->GetMargin("L") + 25);
 		
@@ -2452,6 +2467,9 @@ class PDFBrief extends phynxPDF {
 			}
 		}
 
+		
+		$Sepa = json_decode($this->VarsGRLBM->A("GRLBMSEPAData"));
+		
 		$D = new Datum($date);
 		$D->subWeek();
 		$TBText = str_replace("{+1Woche}", Util::CLDateParser($date + 7 * 3600 * 24), $TBText);
@@ -2460,7 +2478,11 @@ class PDFBrief extends phynxPDF {
 		$TBText = str_replace("{+6Wochen}", Util::CLDateParser($date + 42 * 3600 * 24), $TBText);
 		$TBText = str_replace("{Kalenderwoche}", date("W", $date), $TBText);
 		$TBText = str_replace("{Kalenderwoche-1}", date("W", $D->time()), $TBText);
-
+		if($Sepa){
+			$TBText = str_replace("{IBAN}", $Sepa->IBAN, $TBText);
+			$TBText = str_replace("{BIC}", $Sepa->BIC, $TBText);
+			$TBText = str_replace("{MandatID}", $Sepa->MandateID, $TBText);
+		}
 		if($this->VarsAuftrag != null){
 			$U = new User($this->VarsAuftrag->A("UserID"));
 			$TBText = str_replace("{Benutzername}", $U->A("name"), $TBText);
@@ -2543,11 +2565,29 @@ class PDFBrief extends phynxPDF {
 		
 		$this->isInPosten = true;
 		$P->getFPDF($this, $this->VarsGRLBM);
+		
+		$rabatt = $this->VarsGRLBM->A("rabatt");
+		if($rabatt != 0){
+			$P = new mPosten();
+			$P->addAssocV3("PostenID", "=", "-9999999"); //don't load a thing!
+			foreach($this->gesamt_netto as $key => $value)
+				$P->addVirtualPosten(1,"", Util::formatNumber($this->language, $rabatt)."% ".$this->labelRabattGlobal, "", $value * ($rabatt / 100) * -1, $key, 0);
+			
+			
+			$P->getFPDF($this, $this->VarsGRLBM, false);
+		}
+		
+		$this->printGesamt($this->VarsGRLBM->getMyPrefix());
 	}
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="printGesamt">
 	function printGesamt($type){
+		$this->sumHideOn[] = "M";
+		
+		if($this->sumShowAlleNettopreise)
+			$this->show0ProzentMwSt = true;
+		
 		$this->SetAutoPageBreak(false);
 		$this->isInPosten = false;
 		
@@ -3048,15 +3088,15 @@ class PDFBrief extends phynxPDF {
 		$widthMahnungDatum = 30;
 		$widthMahnungWaehrung = 20;
 		$widthMahnungBetrag = 25;
-		$widthMahnungFaelligkeit = 30;
-		$widthMahnungZinsen = 25;
+		$widthMahnungFaelligkeit = 55;
+		#$widthMahnungZinsen = 25;
 		
 		$labelMahnungBelegnummer = "Belegnummer";
 		$labelMahnungDatum = "Datum";
 		$labelMahnungWaehrung = "Währung";
 		$labelMahnungBetrag = "Betrag";
 		$labelMahnungFaelligkeit = "Fälligkeit";
-		$labelMahnungZinsen = "Zinsen";
+		#$labelMahnungZinsen = "Zinsen";
 		
 		$Rechnung = new GRLBM($GRLBM->A("AuftragID"));
 		$Rechnung->resetParsers();
@@ -3083,7 +3123,7 @@ class PDFBrief extends phynxPDF {
 		$this->Cell8($widthMahnungDatum, 5, $labelMahnungDatum);
 		$this->Cell8($widthMahnungWaehrung, 5, $labelMahnungWaehrung);
 		$this->Cell8($widthMahnungFaelligkeit, 5, $labelMahnungFaelligkeit);
-		$this->Cell8($widthMahnungZinsen, 5, $labelMahnungZinsen, 0, 0, "R");
+		#$this->Cell8($widthMahnungZinsen, 5, $labelMahnungZinsen, 0, 0, "R");
 		$this->Cell8($widthMahnungBetrag, 5, $labelMahnungBetrag, 0, 0, "R");
 		
 		
@@ -3098,7 +3138,7 @@ class PDFBrief extends phynxPDF {
 		$this->Cell8($widthMahnungDatum, 5, Util::formatDate($this->language, $Rechnung->A("datum")));
 		$this->Cell8($widthMahnungWaehrung, 5, "EUR");
 		$this->Cell8($widthMahnungFaelligkeit, 5, Util::formatDate($this->language, $Mahnung1->A("datum")));
-		$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
+		#$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
 		$this->Cell8($widthMahnungBetrag, 5, $this->cur($this->formatCurrency($this->language, $Rechnung->A("bruttobetrag")*1, true)), 0, 1, "R");
 		$total += $Rechnung->A("bruttobetrag");
 		
@@ -3106,7 +3146,7 @@ class PDFBrief extends phynxPDF {
 		$this->Cell8($widthMahnungDatum, 5, Util::formatDate($this->language, $Mahnung1->A("datum")));
 		$this->Cell8($widthMahnungWaehrung, 5, "EUR");
 		$this->Cell8($widthMahnungFaelligkeit, 5, "");
-		$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
+		#$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
 		$this->Cell8($widthMahnungBetrag, 5, $this->cur($this->formatCurrency($this->language, $Mahnung1->A("gebuehren")*1, true)), 0, 1, "R");
 		$total += $Mahnung1->A("gebuehren");
 		
@@ -3115,7 +3155,7 @@ class PDFBrief extends phynxPDF {
 			$this->Cell8($widthMahnungDatum, 5, Util::formatDate($this->language, $Mahnung2->A("datum")));
 			$this->Cell8($widthMahnungWaehrung, 5, "EUR");
 			$this->Cell8($widthMahnungFaelligkeit, 5, "");
-			$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
+			#$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
 			$this->Cell8($widthMahnungBetrag, 5, $this->cur($this->formatCurrency($this->language, $Mahnung2->A("gebuehren")*1, true)), 0, 1, "R");
 			$total += $Mahnung2->A("gebuehren");
 		}
@@ -3125,7 +3165,7 @@ class PDFBrief extends phynxPDF {
 			$this->Cell8($widthMahnungDatum, 5, Util::formatDate($this->language, $Mahnung3->A("datum")));
 			$this->Cell8($widthMahnungWaehrung, 5, "EUR");
 			$this->Cell8($widthMahnungFaelligkeit, 5, "");
-			$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
+			#$this->Cell8($widthMahnungZinsen, 5, $this->cur($this->formatCurrency($this->language, 0, true)), 0, 0, "R");
 			$this->Cell8($widthMahnungBetrag, 5, $this->cur($this->formatCurrency($this->language, $Mahnung3->A("gebuehren")*1, true)), 0, 1, "R");
 			$total += $Mahnung3->A("gebuehren");
 		}
@@ -3138,8 +3178,8 @@ class PDFBrief extends phynxPDF {
 		$this->Cell8($widthMahnungBelegnummer, 5, "");
 		$this->Cell8($widthMahnungDatum, 5, "");
 		$this->Cell8($widthMahnungWaehrung, 5, "");
-		$this->Cell8($widthMahnungFaelligkeit, 5, "");
-		$this->Cell8($widthMahnungZinsen, 5, "Gesamt", 0, 0, "R");
+		$this->Cell8($widthMahnungFaelligkeit, 5, "Gesamt", 0, 0, "R");
+		#$this->Cell8($widthMahnungZinsen, 5, "Gesamt", 0, 0, "R");
 		$this->Cell8($widthMahnungBetrag, 5, $this->cur($this->formatCurrency($this->language, $total, true)), 0, 1, "R");
 	}
 	

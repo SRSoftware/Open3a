@@ -31,7 +31,7 @@ class open3AApplication {
 	}
 	
 	public function registerVersion(){
-		return "2.2";
+		return "2.3";
 	}
 }
 ?>

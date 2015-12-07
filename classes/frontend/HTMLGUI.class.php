@@ -1353,7 +1353,7 @@ class HTMLGUI implements icontextMenu {
 			if($showSF){
 				$B = new Button("Suche als Filter anwenden","./images/i2/searchFilter.png", "icon");
 				$B->style("float:right;");
-				$B->rme("HTML","","saveContextMenu", array("'searchFilter'","'$this->quickSearchPlugin;:;'+$('quickSearch$this->quickSearchPlugin').value"),"if(checkResponse(transport)) contentManager.reloadFrameRight();");
+				$B->rmePCR("HTML","","saveContextMenu", array("'searchFilter'","'$this->quickSearchPlugin;:;'+$('quickSearch$this->quickSearchPlugin').value"),"if(checkResponse(transport)) contentManager.reloadFrame('contentRight', '', 0);");
 				
 				$mU = new mUserdata();
 				$K = $mU->getUDValue("searchFilterInHTMLGUI".$this->quickSearchPlugin);
@@ -1799,7 +1799,22 @@ class HTMLGUI implements icontextMenu {
 								<tr>
 									<td colspan=\"2\" class=\"backgroundColor3\">".$texts["nach Kategorien filtern"].":</td>
 								</tr>
-								$checks
+							</table>
+							<div style=\"max-height:250px;overflow:auto;\">
+								<table style=\"border:0px;\">
+									<colgroup>
+										<col class=\"backgroundColor2\" style=\"width:20px;\" />
+										<col />
+									</colgroup>
+									$checks
+								</table>
+							</div>
+							
+							<table style=\"border:0px;\">
+								<colgroup>
+									<col class=\"backgroundColor2\" style=\"width:20px;\" />
+									<col />
+								</colgroup>
 								<tr>
 									<td colspan=\"2\" class=\"backgroundColor3\">
 										<input
@@ -2056,7 +2071,7 @@ class HTMLGUI implements icontextMenu {
 				
 				$B = new Button("Suche als Filter anwenden","./images/i2/searchFilter.png", "icon");
 				$B->style("float:right;");
-				$B->rme("HTML","","saveContextMenu", array("'searchFilter'","'$this->quickSearchPlugin;:;'+$('quickSearch$this->quickSearchPlugin').value"),"if(checkResponse(transport)) contentManager.reloadFrameRight();");
+				$B->rmePCR("HTML","","saveContextMenu", array("'searchFilter'","'$this->quickSearchPlugin;:;'+$('quickSearch$this->quickSearchPlugin').value"),"if(checkResponse(transport)) contentManager.reloadFrame('contentRight', '', 0);");
 
 				$mU = new mUserdata();
 				$K = $mU->getUDValue("searchFilterInHTMLGUI".$this->quickSearchPlugin);

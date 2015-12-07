@@ -38,7 +38,7 @@ class CSVExport extends UnifiedTable {
 		$csv = "";
 
 		if($this->header)
-			$csv .= utf8_decode("\"".implode("\";\"", $this->header)."\"$this->CSVNewline");
+			$csv .= utf8_decode($this->enclosedBy.implode($this->enclosedBy.$this->separator.$this->enclosedBy, $this->header).$this->enclosedBy."$this->CSVNewline");
 
 
 		foreach($this->content AS $v){

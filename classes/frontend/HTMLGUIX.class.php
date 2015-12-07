@@ -147,8 +147,8 @@ class HTMLGUIX {
 		$this->name = $name;
 	}
 
-	public function autoComplete($fieldName, $targetClass, $onSelectionFunction = null){
-		$this->autocomplete[$fieldName] = array($targetClass, $onSelectionFunction);
+	public function autoComplete($fieldName, $targetClass, $onSelectionFunction = null, $thirdParameter = null){
+		$this->autocomplete[$fieldName] = array($targetClass, $onSelectionFunction, $thirdParameter);
 	}
 	
 	public function blacklists(array $EditIDs, array $DeleteIDs = null){
@@ -627,7 +627,7 @@ class HTMLGUIX {
 			$F->setInputStyle($k, $n);
 		
 		foreach($this->autocomplete AS $k => $a)
-			$F->setAutoComplete($k, $a[0], $a[1]);
+			$F->setAutoComplete($k, $a[0], $a[1], $a[2]);
 		
 		$this->form = $F;
 		return $F;
@@ -783,7 +783,7 @@ class HTMLGUIX {
 		foreach ($this->appended AS $PE)
 			$appended .= $PE;
 		
-		return "<div class=\"browserContainer\">".$prepend.$this->topButtons($bps).$this->sideButtons($bps).$GUIF->getContainer($Tab, $this->caption, $appended)."</div>".str_replace("%CLASSNAME", $this->className, $this->sortable).$this->tip;
+		return "<div class=\"browserContainer contentBrowser\">".$prepend.$this->topButtons($bps).$this->sideButtons($bps).$GUIF->getContainer($Tab, $this->caption, $appended)."</div>".str_replace("%CLASSNAME", $this->className, $this->sortable).$this->tip;
 	}
 	// </editor-fold>
 
@@ -814,8 +814,12 @@ class HTMLGUIX {
 			$TT = new HTMLTable(1);
 			$TT->addTableClass("browserContainerSubHeight");
 			
-			foreach($this->topButtons AS $B)
+			foreach($this->topButtons AS $B){
 				$TT->addRow($B."");
+				
+				if($this->displayMode == "CRMSubframeContainer")
+					$TT->addRowClass ("backgroundColor0");
+			}
 		}
 
 		T::D("");

@@ -36,6 +36,20 @@ class Users extends anyC {
 
 		return $U;
 	}
+	
+	public static function getUsersArray($zeroEntry = null){
+		$AC = self::getUsers(0);
+		$AC->addOrderV3("name");
+		
+		$U = array();
+		if($zeroEntry)
+			$U[0] = $zeroEntry;
+		
+		while($R = $AC->n())
+			$U[$R->getID()] = $R->A("name");
+		
+		return $U;
+	}
 
 	public static function login($username, $password, $application, $language = "default", $isCustomerPage = false){
 		$U = new Users();
