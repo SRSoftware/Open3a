@@ -182,8 +182,14 @@ class htmlMimeMail5 {
 
 				$MailServerSet = true;
 				
-				$this->smtp_params['host'] = $MailServer->A("server");
-				$this->smtp_params['port'] = 25;
+				$host = $MailServer->A("server");
+				$url = parse_url($host);
+				if(isset($url["port"])){
+					$this->smtp_params['port'] = $url["port"];
+					$host = str_replace(":".$url["port"], "", $host);
+				}
+				$this->smtp_params['host'] = $host;
+				
 				#if(isset($xml->Mail->options->helo)) $this->smtp_params['helo'] = $xml->Mail->options->helo["value"]."";
 				$this->smtp_params['helo'] = "localhost";
 				$this->smtp_params['auth'] = $MailServer->A("benutzername") != "";
@@ -205,7 +211,15 @@ class htmlMimeMail5 {
 				
 				$MailServerSet = true;
 				
-				$this->smtp_params['host'] = $MailServer->A("server");
+				$host = $MailServer->A("server");
+				$url = parse_url($host);
+				if(isset($url["port"])){
+					$this->smtp_params['port'] = $url["port"];
+					$host = str_replace(":".$url["port"], "", $host);
+				}
+				$this->smtp_params['host'] = $host;
+				
+				#$this->smtp_params['host'] = $MailServer->A("server");
 				
 				$this->smtp_params['auth'] = $MailServer->A("benutzername") != "";
 				$this->smtp_params['user'] = $MailServer->A("benutzername");

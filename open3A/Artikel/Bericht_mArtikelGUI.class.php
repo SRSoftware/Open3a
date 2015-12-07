@@ -31,7 +31,7 @@ class Bericht_mArtikelGUI extends Bericht_default implements iBerichtDescriptor 
 			$Artikel->addAssocV3("t1.KategorieID", "IN", "(".str_replace(",,", ",", trim($this->userdata["useBAShown"], ",")).")");
 		
  		$Artikel->addJoinV3("Kategorie","KategorieID","=","KategorieID");
- 		$Artikel->setFieldsV3(array("bildDateiName", "artikelnummer", "t2.name AS katName","t1.name","preis","EK1","EK2", "artikelnummer"));
+ 		$Artikel->setFieldsV3(array("bildDateiName", "preisModus", "aufschlagListenpreis", "aufschlagGesamt", "artikelnummer", "t2.name AS katName","t1.name","preis","EK1","EK2", "artikelnummer"));
  		$Artikel->addAssocV3("hideInReport","=","0");
 		
 		if(isset($this->userdata["useBAOrder"]) AND $this->userdata["useBAOrder"] != "")

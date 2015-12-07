@@ -391,6 +391,9 @@ var Popup = {
 		if(!$j("#"+type+'Details'+ID).length)
 			return;
 		
+		if($j("#"+type+'Details'+ID).find(":focus").length)
+			$j("#"+type+'Details'+ID).find(":focus").trigger("blur");
+		
 		var hasTinyMCE = $j("#"+type+'Details'+ID+" textarea[name=tinyMCEEditor], #"+type+'Details'+ID+" .tinyMCEEditor");
 		if(hasTinyMCE.length)
 			tinymce.EditorManager.execCommand('mceRemoveEditor',true, hasTinyMCE.attr("id"));
