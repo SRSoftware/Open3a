@@ -141,11 +141,18 @@ class TextbausteineGUI extends Textbausteine implements iGUIHTML2 {
 		
 		$TBs = isset($_SESSION["TBVariables"][$KategorieID]) ? $_SESSION["TBVariables"][$KategorieID] : array();
 		
-		$TBs = Aspect::joinPoint("append", $this, __METHOD__, array($TBs, $KategorieID), $TBs);
+		$additional = Aspect::joinPoint("append", $this, __METHOD__, array($TBs, $KategorieID), array());
+		foreach($additional AS $k => $v){
+			if(is_array($v)){
+				foreach($v AS $k2 => $v2)
+					if($v2 != "")
+						$TBs[] = $v2;
+			} else 
+				if($v != "")
+					$TBs[] = $v;
+		}
 		
 		die($this->formatVariables($TBs, isset($_SESSION["TBVariablesConditions"][$KategorieID]) ? $_SESSION["TBVariablesConditions"][$KategorieID] : array()));
-		#
-		#echo count($TBs) === 0 ? "nil" : implode(";", $TBs);
 	}
 	
 	private function formatVariables($V, $C = array()){#<span style=\"color:orange;\" class=\"var"+v+" mceNonEditable\">{"+v+"}</span>
@@ -183,9 +190,9 @@ class TextbausteineGUI extends Textbausteine implements iGUIHTML2 {
 		#$k->addTBKategorie("E-Mail Belege Betreff", "41");
 		$k->addTBKategorie("E-Mail Belege", "42");
 
-		$k->addTBVariables("1",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "+#Tage", "Gesamtsumme","Rabatt:#%", "Benutzername"));
-		$k->addTBVariables("2",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "Benutzername"));
-		$k->addTBVariables("3",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "Gesamtsumme","Rabatt:#%","Benutzername"));
+		$k->addTBVariables("1",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "+#Tage", "Gesamtsumme","Rabatt:#%", "Benutzername", "IBAN", "BIC", "MandatID"));
+		$k->addTBVariables("2",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "Benutzername", "IBAN", "BIC", "MandatID"));
+		$k->addTBVariables("3",array("Anrede","+1Woche","+2Wochen","+3Wochen","+6Wochen","+1Monat","+3Monate", "Kalenderwoche", "Kalenderwoche-1", "Gesamtsumme","Rabatt:#%","Benutzername", "IBAN", "BIC", "MandatID"));
 		
 		#$k->addTBVariables("41",array("Firmenname","Belegnummer","Belegdatum"));
 		$k->addTBVariables("42",array("Anrede","Firmenname","Benutzername","Belegnummer","Belegdatum", "Rechnungsnummer", "Gesamtsumme", "+1Woche","+2Wochen","+3Wochen","+1Monat", "+#Tage"));

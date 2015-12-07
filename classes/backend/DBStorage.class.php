@@ -617,8 +617,11 @@ class DBStorage {
 				}*/
 			}
 			
-			if(count($this->parsers) > 0) foreach($this->parsers as $key => $value)
-				if(isset($A->$key)) eval("\$A->\$key = ".$value."(\"".$A->$key."\",\"load\", \$A);");
+			if(count($this->parsers) > 0)
+				foreach($this->parsers as $key => $value)
+					if(isset($A->$key))
+						$A->$key = $this->invokeStaticMethod($value, array($A->$key, "load", $A));
+				#eval("\$A->\$key = ".$value."(\"".."\",\"load\", \$A);");
 			
 			$oID = $statement->table[0]."ID";
 			
@@ -751,8 +754,10 @@ class DBStorage {
 		$fields = null;
 		while($t = $q->fetch_assoc()){
 			$t = array_map("stripslashes",$t);
-			if(count($this->parsers) > 0) foreach($this->parsers as $key => $value)
-				if(isset($t[$key])) eval("\$t[\$key] = ".$value."(\"".$t[$key]."\",\"load\");");
+			if(count($this->parsers) > 0) 
+				foreach($this->parsers AS $key => $value)
+					if(isset($t[$key])) #eval("\$t[\$key] = ".$value."(\"".$t[$key]."\",\"load\");");
+						$t[$key] = $this->invokeStaticMethod($value, array($t[$key], "load"));
 			
 			if($fields == null) $fields = PMReflector::getAttributesArray($statement->AttributesClassName);
 			$newAttributes = $AS->newWithValues($fields,$t);
@@ -855,6 +860,15 @@ class DBStorage {
 		
 		return isset($values[$type]) ? $values[$type] : "S";
 	}*/
+	
+	private function invokeStaticMethod($method, $parameters){
+		$e = explode("::", $method);
+		$R = new ReflectionMethod($e[0], $e[1]);
+		if(!is_array($parameters))
+			$parameters = array($parameters);
+
+		return $R->invokeArgs(null, $parameters);
+	}
 }
 
 ?>

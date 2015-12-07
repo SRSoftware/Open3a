@@ -19,7 +19,7 @@
  */
  
 function htmlReplaces(string) {
-	return string.replace("\#",";-;;raute;;-;").replace("'","_").replace("&",";-;;und;;-;").replace("%",";-;;prozent;;-;").replace("=",";-;;istgleich;;-;").replace("?",";-;;frage;;-;");
+	return string.replace("\#",";-r-;").replace("'","_").replace("&",";-u-;").replace("%",";-p-;").replace("=",";-i-;").replace("?",";-f-;");
 }
  
 var ACDiv = null;

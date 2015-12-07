@@ -309,7 +309,7 @@ class GUIFactory {
 		if($showSF){
 			$B = new Button("Suche als Filter anwenden","./images/i2/searchFilter.png", "icon");
 			$B->style("float:right;");
-			$B->rme("HTML","","saveContextMenu", array("'searchFilter'","'$this->collectionName;:;'+$('quickSearch$this->collectionName').value"),"if(checkResponse(transport)) contentManager.reloadFrameRight();");
+			$B->rmePCR("HTML","","saveContextMenu", array("'searchFilter'","'$this->collectionName;:;'+$('quickSearch$this->collectionName').value"),"if(checkResponse(transport)) contentManager.reloadFrame('contentRight', '', 0);");
 
 			$mU = new mUserdata();
 			$K = $mU->getUDValue("searchFilterInHTMLGUI".$this->collectionName);

@@ -61,7 +61,7 @@ class mPosten extends anyC {
 
 			}
 			
-			if($t->A("PostenAddLine") != "" AND $ZS){
+			if($t->A("PostenAddLine") != "" AND $t->A("PostenAddLine") != "-" AND $ZS){
 				if(strpos($t->A("PostenAddLine"), "[") === 0){
 					$titles = json_decode($t->A("PostenAddLine"));
 					foreach($titles AS $T){
@@ -115,11 +115,11 @@ class mPosten extends anyC {
 		if($l == "store") return str_replace(",",".",$w);
 	}*/
 
-	function cloneAllToGRLBM($GRLBMID){
+	function cloneAllToGRLBM($GRLBMID, $updatePrices = false, $kundennummer = 0){
 		$this->addAssocV3("GRLBMID","=",$GRLBMID);
 		
 		while($t = $this->n())
-			$t->cloneMe();
+			$t->cloneMe($updatePrices, $kundennummer);
 	}
 	
 	function addVirtualPosten($menge, $einheit, $bezeichnung, $beschreibung, $preis, $mwst, $isBrutto, $bruttopreis, $artikelnummer = ""){
@@ -142,17 +142,18 @@ class mPosten extends anyC {
 		$this->collector[] = $P;
 	}
 
-	public function getFPDF($fpdf, GRLBM $GRLBM){
+	public function getFPDF($fpdf, GRLBM $GRLBM, $resetValues = true){
 		if($this->letterType == "M")
 			return;
 		
 		$userHiddenFields = mUserdata::getHides("Artikel");
 		
-		$fpdf->gesamtEK1 = 0;
-		$fpdf->gesamtEK2 = 0;
-		$fpdf->gesamt_netto = array();
-		$fpdf->gesamt_brutto = 0;
-		
+		if($resetValues){
+			$fpdf->gesamtEK1 = 0;
+			$fpdf->gesamtEK2 = 0;
+			$fpdf->gesamt_netto = array();
+			$fpdf->gesamt_brutto = 0;
+		}
 		#$fpdf->positionPreis = "start";
 				
 		$positionsNummern = $this->getPositionsNummern();
@@ -164,6 +165,11 @@ class mPosten extends anyC {
 			if(!$fpdf->showPositionen){
 				$PC->calcPrices($fpdf);
 				continue;
+			}
+			
+			if($PC->A("PostenUsedSerials")){
+				$S = json_decode($PC->A("PostenUsedSerials"));
+				$PC->changeA("beschreibung", implode("\n", $S)."\n".$PC->A("beschreibung"));
 			}
 			
 			if($i == 0 AND (!isset($A->PostenNewPage) OR $A->PostenNewPage == "0"))
@@ -326,7 +332,7 @@ class mPosten extends anyC {
 			
 
 			$fpdf->ln($fpdf->abstandPositionen);
-			Aspect::joinPoint("belowPosten", $this, __METHOD__, array($fpdf, $PC, $next));
+			Aspect::joinPoint("belowPosten", $this, __METHOD__, array($fpdf, $PC, $next, $yImage));
 			
 			if($yImage != null AND $yImage > $yBeschreibung AND $fpdf->PageNo() == $startPage)
 				$fpdf->SetY($yImage);
@@ -361,8 +367,9 @@ class mPosten extends anyC {
 		}
 		
 		$fpdf->ln(2);
-		$fpdf->Line($fpdf->GetMargin("L") , $fpdf->getY(), 210-$fpdf->GetMargin("R") , $fpdf->getY());
-		$fpdf->printGesamt($this->letterType);
+		if($fpdf->showPositionen)
+			$fpdf->Line($fpdf->GetMargin("L") , $fpdf->getY(), 210-$fpdf->GetMargin("R") , $fpdf->getY());
+		
 	}
 
 	private function printPrices($fpdf, $Posten){

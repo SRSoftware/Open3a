@@ -41,9 +41,9 @@ class Patch extends PersistentObject {
 				$_SESSION["messages"]->addMessage("It's a MySQL-Patch!");
 				$this->alterTables();
 			break;
-			case "php":
-				eval($this->A("PatchValue"));
-			break;
+			#case "php":
+			#	eval($this->A("PatchValue"));
+			#sbreak;
 		}
 
 		$this->changeA("patchExecuted", "1");#->patchExecuted = 1;

@@ -20,7 +20,7 @@
 class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, icontextMenu, iSearchFilter, iCategoryFilter {
 	
 	protected $gui;
-	public $searchFields = array("nachname","vorname","firma","ort","strasse","kundennummer", "tel", "CONCAT(vorname, ' ', nachname)");
+	public $searchFields = array("nachname","vorname","firma","ort","strasse","kundennummer", "tel", "CONCAT(vorname, ' ', nachname)", "CONCAT(nachname, ' ', vorname)");
 	public $inAC = false;
 	public $searchLimit = 10;
 
@@ -412,8 +412,10 @@ class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 			} else
 				$symbols .= "<img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/mobile.png\" title=\"$s[7]\" />";
 		}
-		if($s[6] != "") $symbols .= "<a href=\"mailto:$s[6]\"><img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/email.png\" title=\"$s[6]\" /></a>";
-		if($s[5] != "") $symbols .= "<img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/fax.png\" title=\"$s[5]\" />";
+		if($s[6] != "")
+			$symbols .= "<a href=\"mailto:$s[6]\"><img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/email.png\" title=\"$s[6]\" /></a>";
+		if($s[5] != "")
+			$symbols .= "<img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/fax.png\" title=\"$s[5]\" />";
 		if($s[4] != "") {
 			if(Session::isPluginLoaded("mTelefonanlage")){
 				$B = Telefonanlage::getCallButton($s[4]);
@@ -422,11 +424,12 @@ class AdressenGUI extends Adressen implements iGUIHTMLMP2, iAutoCompleteHTML, ic
 			} else
 				$symbols .= "<img class=\"mouseoverFade\" style=\"float:right;margin-left:4px;\" src=\"./images/i2/telephone.png\" title=\"$s[4]\" />";
 		}
+		
 		return $symbols.((Session::isPluginLoaded("Kunden") AND $s[3] == "default" AND !$SM) ? 
 		"<img src=\"./images/i2/kunde.png\" title=\"Kundendaten anzeigen/erstellen\" onclick=\"contentManager.selectRow(this); contentManager.loadFrame('contentLeft', 'Kunde', -1, 0, 'KundeGUI;AdresseID:$s[2];action:Kappendix');\" style=\"float:left;margin-right:4px;\" class=\"mouseoverFade\" />" : "")
-		.(($_SESSION["S"]->checkForPlugin("Kundenpreise") AND $s[3] == "default" AND !$SM) ? "<img src=\"./images/i2/kundenpreis.png\" title=\"Kundenpreise festlegen\" onclick=\"contentManager.selectRow(this); contentManager.loadFrame('contentLeft','Kunde', -1, 0,'KundeGUI;AdresseID:$s[2];action:Kundenpreise');\" style=\"float:left;margin-right:4px;\" class=\"mouseoverFade\" />" : "")
-		.(($_SESSION["S"]->checkForPlugin("labelPrinter") AND $s[3] == "default") ? "<img src=\"./images/i2/printer.png\" title=\"Etikette mit Adresse drucken\" onclick=\"rme('labelPrinter','','printEtikette','$s[2]');\" style=\"float:left;margin-right:4px;\" class=\"mouseoverFade\" />" : "")
-		.($w != "" ? stripslashes($w).(($s[1] != "" OR $s[0] != "") ? "<br /><small>$s[0] $s[1]</small>" : "") : $s[0]." ".$s[1]);
+		.((Session::isPluginLoaded("Kundenpreise") AND $s[3] == "default" AND !$SM) ? "<img src=\"./images/i2/kundenpreis.png\" title=\"Kundenpreise festlegen\" onclick=\"contentManager.selectRow(this); contentManager.loadFrame('contentLeft','Kunde', -1, 0,'KundeGUI;AdresseID:$s[2];action:Kundenpreise');\" style=\"float:left;margin-right:4px;\" class=\"mouseoverFade\" />" : "")
+		.((Session::isPluginLoaded("labelPrinter") AND $s[3] == "default") ? "<img src=\"./images/i2/printer.png\" title=\"Etikette mit Adresse drucken\" onclick=\"rme('labelPrinter','','printEtikette','$s[2]');\" style=\"float:left;margin-right:4px;\" class=\"mouseoverFade\" />" : "")
+		."<div style=\"margin-left:".(21 + (Session::isPluginLoaded("Kundenpreise") ? 21 : 0) + (Session::isPluginLoaded("labelPrinter") ? 21 : 0))."px;\">".($w != "" ? stripslashes($w).(($s[1] != "" OR $s[0] != "") ? "<br /><small>$s[0] $s[1]</small>" : "") : $s[0]." ".$s[1])."</div>";
 	}
 
 	public static function doSomethingElse(){

@@ -116,6 +116,8 @@ class Adapter {
 	function addSelectStatement($command, $value){
 		$c = array();
 		$c[] = $value;
+		if(!is_array($this->selectStatement->$command))
+			$this->selectStatement->$command = array();
 		$this->selectStatement->$command = array_merge($this->selectStatement->$command, $c);
 	}
 	
@@ -347,6 +349,16 @@ class Adapter {
 				}
 			}
 				
+		}
+		
+		if(!isset($this->selectStatement->searchCustom))
+			return;
+		
+		foreach($this->selectStatement->searchCustom AS $v){
+			$this->addSelectStatement("whereFields",$v[0]);
+			$this->addSelectStatement("whereOperators", $v[1]);
+			$this->addSelectStatement("whereValues",$v[2]);
+			$this->addSelectStatement("whereLogOp",$v[3]);
 		}
 	}
 

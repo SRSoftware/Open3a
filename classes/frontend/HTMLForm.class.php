@@ -44,6 +44,8 @@ class HTMLForm {
 	protected $saveAction;
 	protected $saveButtonCustom;
 
+	protected $abortButton;
+	
 	protected $onSubmit;
 	protected $onChange = array();
 	protected $onBlur = array();
@@ -113,8 +115,8 @@ class HTMLForm {
 		}
 	}
 
-	public function setAutoComplete($fieldName, $targetClass, $onSelectionFunction = ""){
-		$this->autocomplete[$fieldName] = array($targetClass, $onSelectionFunction);
+	public function setAutoComplete($fieldName, $targetClass, $onSelectionFunction = "", $thirdParameter = null){
+		$this->autocomplete[$fieldName] = array($targetClass, $onSelectionFunction, $thirdParameter);
 	}
 	
 	public function setAction($action){
@@ -304,6 +306,10 @@ class HTMLForm {
 		$this->onSubmit = $this->saveButtonSubmit." return false;";
 	}
 	
+	public function setAbortCustomerPage($label, $onclick, $icon = null){
+		$this->abortButton = array($label, $onclick, $icon);
+	}
+	
 	public function setSaveCustom($saveButtonLabel, $saveButtonBGIcon = null, $onClick = ""){
 		$this->saveMode = "rmeP";
 		$this->saveButtonLabel = $saveButtonLabel;
@@ -378,10 +384,10 @@ class HTMLForm {
 		$this->onSubmit = str_replace("contentManager.rmePCR", "windowWithRme", $this->onSubmit);
 	}
 
-	public function setSaveContextMenu(PersistentObject $class, $targetMethod){
+	public function setSaveContextMenu(PersistentObject $class, $targetMethod, $onSuccessFunction = ""){
 		$targetClass = str_replace("GUI", "", get_class($class));
 		
-		$this->setSaveRMEPCR("speichern", "./images/i2/save.gif", $targetClass, -1, $targetMethod, "function(){phynxContextMenu.stop();}");
+		$this->setSaveRMEPCR("speichern", "./images/i2/save.gif", $targetClass, $class->getID(), $targetMethod, "function(){ phynxContextMenu.stop(); $onSuccessFunction }");
 	}
 
 	public function setSaveConfirmation($question){
@@ -554,7 +560,7 @@ class HTMLForm {
 				$Input->style($this->inputStyle[$v]);
 
 			if(isset($this->autocomplete[$v]))
-				$Input->autocomplete($this->autocomplete[$v][0], $this->autocomplete[$v][1]);
+				$Input->autocomplete($this->autocomplete[$v][0], $this->autocomplete[$v][1], false, $this->autocomplete[$v][2]);
 			
 			if(isset($this->placeholders[$v]))
 				$Input->placeholder($this->placeholders[$v]);
@@ -787,7 +793,18 @@ class HTMLForm {
 					$S->onclick(($this->saveButtonConfirm != null ? "if(confirm('".$this->saveButtonConfirm."')) " : "").$this->saveButtonSubmit);
 					$S->setClass("submitFormButton borderColor1");
 					
-					$this->table->addRow(array($S));
+					$C = "";
+					if($this->abortButton != null){
+						$C = new HTMLInput("abortForm", "button", $this->abortButton[0]);
+						if($this->abortButton[2] != null)
+							$C->style("background-image:url({$this->abortButton[2]});background-position:98% 50%;background-repeat:no-repeat;");
+
+						$C->onclick($this->abortButton[1]);
+							
+						$C->setClass("abortFormButton borderColor1");
+					}
+					
+					$this->table->addRow(array($S.$C));
 					$this->table->addRowColspan(1, 2);
 				break;
 

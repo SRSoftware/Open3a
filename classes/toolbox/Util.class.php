@@ -22,7 +22,7 @@ class Util {
 		return trim(strtolower(pathinfo($filename, PATHINFO_EXTENSION)));
 	}
 	
-	function isDirEmpty($dir) {
+	public static function isDirEmpty($dir) {
 		if (!is_readable($dir))
 			return null; 
 		
@@ -707,8 +707,8 @@ class Util {
 		if(!$long) $format = $format[0];
 		else $format = $format[2];
 		
-		$weekdayNames = util::getLangWeekdayNames($language);
-		$monthNames = util::getLangMonthNames($language);
+		$weekdayNames = Util::getLangWeekdayNames($language);
+		$monthNames = Util::getLangMonthNames($language);
 
 		$date = date($format, $timeStamp);
 		$date = str_replace(date("l", $timeStamp), $weekdayNames[date("w", $timeStamp)], $date);
@@ -718,12 +718,12 @@ class Util {
 	}
 	
 	public static function CLMonthName($number){
-		$monthNames = util::getLangMonthNames($_SESSION["S"]->getUserLanguage());
+		$monthNames = Util::getLangMonthNames($_SESSION["S"]->getUserLanguage());
 		return $monthNames[$number*1];
 	}
 	
 	public static function CLWeekdayName($number){
-		$weekdayNames = util::getLangWeekdayNames($_SESSION["S"]->getUserLanguage());
+		$weekdayNames = Util::getLangWeekdayNames($_SESSION["S"]->getUserLanguage());
 		return $weekdayNames[$number*1];
 	}
 
@@ -1817,13 +1817,17 @@ class Util {
 		'.($js ? '
 		<script type="text/javascript" src="../libraries/jquery/jquery-1.9.1.min.js"></script>
 		<script type="text/javascript" src="../libraries/jquery/jquery-ui-1.10.1.custom.min.js"></script>
+		<script type="text/javascript" src="../libraries/iconic/iconic.min.js"></script>
+		<script type="text/javascript" src="../libraries/jquery/jquery.qtip.min.js"></script>
 		<script type="text/javascript" src="../javascript/P2J.js"></script>
+		<script type="text/javascript" src="../javascript/Aspect.js"></script>
 		<script type="text/javascript" src="../javascript/handler.js"></script>
 		<script type="text/javascript" src="../javascript/contentManager.js"></script>
 		<script type="text/javascript" src="../javascript/Interface.js"></script>
 		<script type="text/javascript" src="../javascript/Overlay.js"></script>
 		<script type="text/javascript" src="../libraries/webtoolkit.base64.js"></script>' : "").'
 		
+		<link rel="stylesheet" type="text/css" href="../libraries/jquery/jquery.qtip.min.css" />
 		<link rel="stylesheet" type="text/css" href="../styles/'.(isset($_COOKIE["phynx_color"])? $_COOKIE["phynx_color"] : "standard").'/colors.css"></link>
 		<link rel="stylesheet" type="text/css" href="../styles/standard/general.css"></link>
 		<style type="text/css">

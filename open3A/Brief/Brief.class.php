@@ -107,13 +107,16 @@ class Brief extends UnpersistentClass {
 			
 		if($this->Auftrag AND $this->Auftrag->A("AuftragVorlage") != "")
 			$n = $this->Auftrag->A("AuftragVorlage");
-		
+
 		#if($_SESSION["BPS"]->getProperty("Brief","templateType") == "Email" AND $SA->ownTemplateEmail != "") 
 		#	$n = $SA->ownTemplateEmail;
 			
+		if($this->target == "Email" AND $SA->ownTemplateEmailNew != "") 
+			$n = $SA->ownTemplateEmailNew;
+		
 		if($this->target == "Print" AND $SA->ownTemplatePrint != "") 
 			$n = $SA->ownTemplatePrint;
-		
+
 		$n = Aspect::joinPoint("template", $this, __METHOD__, array($this->Auftrag, $this->GRLBM), $n);
 		
 		$ud = new mUserdata();

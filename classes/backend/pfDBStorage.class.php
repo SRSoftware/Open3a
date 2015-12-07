@@ -93,7 +93,7 @@ class pfDBStorage {
 		$c = new stdClass();
 		
 		foreach($t as $key => $value)
-			$c->$key = $mf->unescapeString($value);
+			$c->$key = $mf->unescapeString(stripslashes($value));
 		
 		$n = $table."ID";
 		$c->$n = $t["ID"];
@@ -191,7 +191,7 @@ class pfDBStorage {
 			$t[$table."ID"] = $t["ID"];
 			unset($t["ID"]);
 			foreach($t as $key => $value)
-				$t[$key] = $mf->unescapeString($value);
+				$t[$key] = $mf->unescapeString(stripslashes($value));
 			
 			if(count($this->parsers) > 0) foreach($this->parsers as $key => $value)
 				eval("\$t[\$key] = ".$value."(\"".$t[$key]."\",\"load\");");

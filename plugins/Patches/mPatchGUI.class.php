@@ -99,6 +99,7 @@ class mPatchGUI extends anyC implements iGUIHTML2 {
 	}
 	
 	public function processUpdate($fileName){
+		set_time_limit(0);
 		$messages = array();
 		
 		$unbeschreibbar = $this->checkWritable(Util::getRootPath());
