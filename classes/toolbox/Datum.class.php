@@ -30,7 +30,7 @@ class Datum {
 			else
 				$timestamp = Util::CLDateParser($date, "store");
 		}
-		
+
 		$this->timestamp = $timestamp;
 	}
 	

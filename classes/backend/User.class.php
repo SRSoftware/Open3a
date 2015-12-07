@@ -54,8 +54,10 @@ class User extends PersistentObject {
 		$U = new User($this->ID);
 		$U->loadMe(false);
 		if(mUserdata::getGlobalSettingValue("encryptionKey") == null AND Session::isUserAdminS()) mUserdata::setUserdataS("encryptionKey", Util::getEncryptionKey(), "eK", -1);
-		if($this->A->SHApassword != "") $this->A->SHApassword = sha1($this->A->SHApassword);
-		else $this->A->SHApassword = $U->A("SHApassword");
+		if($this->A->SHApassword != "")
+			$this->A->SHApassword = sha1($this->A->SHApassword);
+		else
+			$this->A->SHApassword = $U->A("SHApassword");
 
 		if($checkUserData) mUserdata::checkRestrictionOrDie("cantEdit".str_replace("GUI","",get_class($this)));
 

@@ -185,6 +185,13 @@ var Auftrag = {
 		});
 	},
 	
+	/*createDelivery: function(nothing, AdresseID){
+		contentManager.rmePCR("Auftraege", -1, "createEmpty", ["L", AdresseID], function(transport){ 
+			contentManager.loadFrame("contentLeft", "LBestellung", transport.responseText);
+			contentManager.restoreFrame('contentRight','selectionOverlay');
+		});
+	},*/
+	
 	addFile: function(GRLBMID, fileID){
 		rmeP("GRLBM", GRLBMID, "addFile", fileID, "contentManager.loadFrame('subframe', 'GRLBM', "+GRLBMID+", 0)");
 	},
@@ -226,14 +233,15 @@ var Auftrag = {
 		if(typeof AnsprechpartnerID == "undefined")
 			AnsprechpartnerID = "0";
 
-		rmeP("Auftrag", Aid, "getViaEMailWindow", [GRLBMID, mode, AnsprechpartnerID], "if(checkResponse(transport)) { Popup.create("+Aid+", 'EMailPreview', 'E-Mail Vorschau'); Popup.update(transport, "+Aid+", 'EMailPreview'); }");
+		Popup.load("Per E-Mail verschicken", "Auftrag", Aid, "getViaEMailWindow", [GRLBMID, mode, AnsprechpartnerID], "", "edit", "{width: 600}");
+		//rmeP("Auftrag", Aid, "getViaEMailWindow", [GRLBMID, mode, AnsprechpartnerID], "if(checkResponse(transport)) { Popup.create("+Aid+", 'Auftrag', 'E-Mail Vorschau'); Popup.update(transport, "+Aid+", 'Auftrag'); }");
 
 	},
 
-	directMail: function(Aid, GRLBMID, recipient, subject, body){
+	directMail: function(Aid, GRLBMID, recipient, subject, body, attachments, otherRecipient){
 		if(!confirm(AuftraegeMessages.C001)) return;
 		
-		contentManager.rmePCR("Auftrag", Aid, "sendViaEmail", [GRLBMID, recipient, subject, body], function(){
+		contentManager.rmePCR("Auftrag", Aid, "sendViaEmail", [GRLBMID, recipient, subject, body, "1", attachments, otherRecipient], function(){
 			if(lastLoadedLeftPlugin == 'Bestellung')
 				contentManager.reloadFrame('contentLeft');
 			
@@ -246,10 +254,10 @@ var Auftrag = {
 
 	},
 
-	plSign: function(id, GRLBMID, recipient, subject, body){
+	plSign: function(id, GRLBMID, recipient, subject, body, otherRecipient){
 		if(!confirm('Soll diese Rechnung qualifiziert digital signiert werden?\nAchtung: dadurch entstehen Kosten.')) return;
 		//rmeP('Auftrag',id,'signLetter',[GRLBMID, recipient, subject, body],'checkResponse(transport); if($("GRLBM1xEMail")) $("GRLBM1xEMail").value = "";')
-		contentManager.rmePCR('Auftrag',id,'signLetter',[GRLBMID, recipient, subject, body], function(){ 
+		contentManager.rmePCR('Auftrag',id,'signLetter',[GRLBMID, recipient, subject, body, 1, otherRecipient], function(){ 
 			if($("GRLBM1xEMail"))
 				$("GRLBM1xEMail").value = "";
 			

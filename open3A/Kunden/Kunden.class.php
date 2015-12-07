@@ -85,7 +85,10 @@ class Kunden extends anyC {
 		}
 		
 		$KApp->setA($KAppA);
-		if($returnNewObject) return $KApp;
+		
+		if($returnNewObject)
+			return $KApp;
+		
 		return $KApp->newMe();
 	}
 }

@@ -53,6 +53,8 @@ class KundenpreiseGUI extends Kundenpreise implements iGUIHTML2 {
 		$gui->parser("kundenPreis","preisParser");
 		$gui->parser("artikelnummer","parserArtikelnummer");
 		
+		$BA = $gui->addSideButton("Adresse\nanzeigen", "address");
+		$BA->loadFrame("contentLeft", "Adresse", $this->AdresseID);
 			
 		$B = $gui->addSideButton("Kundenpreis\nhinzufügen", "package");
 		$B->select(true, "mArtikel", "Kundenpreis", $this->AdresseID, "makeKundenpreis");

@@ -40,6 +40,14 @@ if(isset($_GET["target"])){
 	$con = "";
 }
 
+
+$par = str_replace(";-r-;","#",$par);
+$par = str_replace(";-u-;","&",$par);
+$par = str_replace(";-p-;","%",$par);
+$par = str_replace(";-i-;","=",$par);
+$par = str_replace(";-f-;","?",$par);
+
+//Still required for some extensions, e.g. Zentrale
 $par = str_replace(";-;;raute;;-;","#",$par);
 $par = str_replace(";-;;und;;-;","&",$par);
 $par = str_replace(";-;;prozent;;-;","%",$par);

@@ -354,7 +354,7 @@ class HTMLGUI2 extends HTMLGUI {
 		/**
 		 * NEW-BUTTON
 		 */
-		if(!$this->onlyDisplayMode /*AND $this->selectionRow == ""*/ AND $userCanCreate AND $this->showNewButton AND $lineWithId == -1){
+		if(!$this->onlyDisplayMode AND !$this->isSelection/*AND $this->selectionRow == ""*/ AND $userCanCreate AND $this->showNewButton AND $lineWithId == -1){
 			$BNew = new Button("","./images/i2/new.gif");
 			$BNew->type("icon");
 			$BNew->id("buttonNewEntry$this->singularClass");
