@@ -311,7 +311,7 @@ class AdresseGUI extends Adresse implements /*iFPDF, */iGUIHTML2 {
 		if($this->A("land") == ISO3166::getCountryToCode("DK") OR $this->A("land") == ISO3166::getCountryToCode("ES")){
 			$fields[] = "bezirk";
 		}
-		if($this->A("land") == ISO3166::getCountryToCode("DE"))
+		if($this->A("land") == ISO3166::getCountryToCode("DE") OR $this->A("land") == ISO3166::getCountryToCode("FR"))
 			$fields[] = "zusatz2";
 		
 		

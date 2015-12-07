@@ -377,6 +377,16 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 			$gui->setParser("nummer", "AuftraegeGUI::parseRnr", array($query{0}));
 		}
 		
+		$_SESSION["BPS"]->registerClass("HTMLGUI");
+		$_SESSION["BPS"]->setACProperty("targetFrame","contentLeft");
+		$_SESSION["BPS"]->setACProperty("targetPlugin","Auftrag");
+					
+		$gui->setShowAttributes(array("firma","nummer"));
+
+		$gui->setParser("firma","AuftraegeGUI::firmaParser", array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID", "\$ProjektID", "\$ProjektName", "\$AuftragAdresseNiederlassungID", "\$AuftragAdresseNiederlassungData"));
+		$gui->setParser("nummer","AuftraegeGUI::nummerParser", array("\$sc->datum", "\$sc->GRLBMID"));
+
+		
 		$searchByReference = false;
 		if($query{0} == "?"){
 			$query = str_replace("?","", $query);
@@ -434,8 +444,8 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 				
 				
 				if(!$searchByDate AND !$searchByNumber AND !$searchByCID AND !$searchByReference AND $d == null){
-					$html = "<p style=\"padding:3px;\"><img src=\"./images/i2/note.png\" style=\"float:left;margin-right:3px;\" /><small>Aus Gründen der Performance werden nur die Aufträge der letzten 6 Wochen durchsucht. Bitte stellen Sie manuell ein Datum ein, um dies zu überschreiben.</small></p>";
-					$ASH->addAssocV3("datum",">=", time() - 6 * 7 * 24 * 3600);
+					$html = "<p style=\"padding:3px;\"><img src=\"./images/i2/note.png\" style=\"float:left;margin-right:3px;\" /><small>Aus Gründen der Performance werden nur die Aufträge der letzten 3 Monate durchsucht. Bitte stellen Sie manuell ein Datum ein, um dies zu überschreiben.</small></p>";
+					$ASH->addAssocV3("datum",">=", time() - 3 * 4 * 7 * 24 * 3600);
 				}
 				
 				if($searchByNumber)
@@ -446,12 +456,24 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 					$ASH->addAssocV3("kundennummer", "LIKE", "%$query%", $k == 0 ? "AND" : "OR", "1");
 					$ASH->addGroupV3("AuftragID");
 				}
-				elseif($searchByProjekt){
-					$ASH->addFieldV3("t1.ProjektID");
-					$ASH->addFieldV3("ProjektName");
+				elseif($searchByProjekt){ //Findet auch Aufträge ohne Beleg
+					$AC = anyC::get("Projekt");
+					$AC->addJoinV3("Auftrag", "ProjektID", "=", "ProjektID");
+					$AC->addJoinV3("Adresse","t2.AdresseID","=","AdresseID");
+
+					$AC->setLimitV3("10");
+					$AC->addOrderV3("auftragDatum","DESC");
 					
-					$ASH->addJoinV3("Projekt", "ProjektID", "=", "ProjektID");
-					$ASH->addAssocV3("ProjektName", "LIKE", "%$query%", "AND", "1");
+					$fields = array("nachname", "auftragDatum AS datum", "t2.AuftragID", "t1.ProjektID", "ProjektName","firma","vorname", "t2.UserID", "AuftragAdresseNiederlassungID", "AuftragAdresseNiederlassungData");
+					$AC->setFieldsV3($fields);
+					
+					$AC->addAssocV3("ProjektName", "LIKE", "%$query%", "AND", "1");
+					$AC->lCV3();
+					
+					$gui->setObject($AC);
+					$gui->customize($this->customizer);
+
+					die($gui->getACHTMLBrowser("quickSearchLoadFrame", true, null, "AuftragID"));
 				}
 				elseif($searchByReference)
 					$ASH->addAssocV3("GRLBMReferenznummer", "=", $query, "AND", "1");
@@ -471,7 +493,6 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 					#	$ASH->addAssocV3($field, "LIKE", "%$q2%", "OR", "1");
 					
 					
-				
 				$ASH->addOrderV3("datum","DESC");
 				$ASH->lCV3();
 				
@@ -488,15 +509,6 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 				$ASH->resetPointer();
 				
 				$gui->setObject($ASH);
-				$gui->setShowAttributes(array("firma","nummer"));
-				
-				$gui->setParser("firma","AuftraegeGUI::firmaParser", array("\$sc->nachname","asd","\$sc->vorname", "\$sc->UserID", "\$ProjektID", "\$ProjektName", "\$AuftragAdresseNiederlassungID", "\$AuftragAdresseNiederlassungData"));
-				$gui->setParser("nummer","AuftraegeGUI::nummerParser", array("\$sc->datum", "\$sc->GRLBMID"));
-				
-				$_SESSION["BPS"]->registerClass("HTMLGUI");
-				$_SESSION["BPS"]->setACProperty("targetFrame","contentLeft");
-				$_SESSION["BPS"]->setACProperty("targetPlugin","Auftrag");
-
 				$gui->customize($this->customizer);
 
 				echo $html.$gui->getACHTMLBrowser("quickSearchLoadFrame");
@@ -526,9 +538,12 @@ class AuftraegeGUI extends Auftraege implements iGUIHTMLMP2, iAutoCompleteHTML, 
 		</p>
 		<p style=\"margin-top:10px;padding:5px;\">Es werden folgende Felder durchsucht:<br><br>Firma<br>Kundennummer<br>Vorname und Nachname<br><br>Um eine Rechnung zu finden, suchen Sie z.B. nach '#R070010'.<br />Lieferschein: '#L...',<br />Gutschein: '#G...',<br />Angebot: '#A...',<br />Bestätigung: '#B...' und<br />Kalkulation: '#K...'</p>
 		
-		<p style=\"margin-top:10px;padding:5px;\">Um nach einer Referenznummer zu suchen, beginnen Sie die Suche mit einem '?'. Also zum Beispiel '?300' findet den Beleg mit der Referenznummer 300.</p>
+		<p style=\"margin-top:10px;padding:5px;\">Um nach einer Referenznummer zu suchen, beginnen Sie die Suche mit einem '?'. Also zum Beispiel '?300' findet den Beleg mit der Referenznummer 300.</p>";
+		
+		if(Session::isPluginLoaded("mProjekt"))
+			echo "<p>Eine Projektnummer finden Sie mit vorangestelltem *.";
 
-		<p><img src=\"./images/i2/searchFilter.png\" style=\"float:left;margin-right:5px;\" /> Das Ergebnis der Filterung nach einem Suchbegriff weicht vom Ergebnis der Schnellsuche ab.";
+		echo "<p><img src=\"./images/i2/searchFilter.png\" style=\"float:left;margin-right:5px;\" /> Das Ergebnis der Filterung nach einem Suchbegriff weicht vom Ergebnis der Schnellsuche ab.";
 
 	}
 	

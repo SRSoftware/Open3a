@@ -50,7 +50,12 @@ class HTMLInput {
 	private $autocorrect = true;
 	private $spellcheck = true;
 	private $title;
+	private $parentValue;
 	private $data = array();
+	
+	public function parentValue($PV){
+		$this->parentValue = $PV;
+	}
 	
 	public function __construct($name, $type = "text", $value = null, $options = null){
 		$this->name = $name;
@@ -93,6 +98,10 @@ class HTMLInput {
 	
 	public function setType($type){
 		$this->type = $type;
+	}
+	
+	public function getType(){
+		return $this->type;
 	}
 	
 	public function placeholder($text){
@@ -579,14 +588,24 @@ class HTMLInput {
 			break;
 
 			case "option":
-				return "<option".($this->style != null ? " style=\"$this->style\"" : "")." ".($this->isDisabled ? "disabled=\"disabled\"" : "")." ".($this->isSelected ? "selected=\"selected\"" : "")." value=\"$this->value\">$this->name</option>";
+				$data = "";
+				foreach($this->data AS $k => $v)
+					$data .= " data-$k=\"$v\"";
+				
+				return "<option".($this->style != null ? " style=\"$this->style\"" : "")." $data ".($this->isDisabled ? "disabled=\"disabled\"" : "")." ".($this->isSelected ? "selected=\"selected\"" : "")." value=\"$this->value\">$this->name</option>";
 			break;
 
 			case "optgroup":
 				$html = "<optgroup label=\"".htmlentities($this->name)."\">";
 				
-				foreach($this->options AS $k => $v)
+				foreach($this->options AS $k => $v){
+					if(is_object($v)){
+						$v->isSelected(false);
+						if($this->parentValue == $k OR $v->getValue() == $this->parentValue)
+							$v->isSelected(true);
+					}
 					$html .= $v;
+				}
 				
 				$html .= "</optgroup>";
 				
@@ -633,6 +652,10 @@ class HTMLInput {
 							$html .= "<option ".($isThisIt ? "selected=\"selected\"" : "")." value=\"$k\">$v</option>";
 						}
 						else {
+							if($v->getType() == "optgroup")
+								$v->parentValue($this->value);
+							
+							$v->isSelected(false);
 							if($this->value == $k OR $v->getValue() == $this->value)
 								$v->isSelected(true);
 							$html .= $v;

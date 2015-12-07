@@ -297,7 +297,7 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="signLetter">
-	function signLetter($GRLBMID, $Recipient = "", $Subject = "", $Body = "", $die = true){
+	function signLetter($GRLBMID, $Recipient = "", $Subject = "", $Body = "", $die = true, $otherRecipient = ""){
 		$G = new GRLBM($GRLBMID);#$_SESSION["BPS"]->getProperty("Brief","GRLBMID"));
 		if($G->A("GRLBM1xEMail") != null AND $G->A("GRLBM1xEMail")){
 			$altEMailAddress = $G->A("GRLBM1xEMail");
@@ -313,9 +313,13 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 		if($Recipient != "") $AnAdresse->changeA("email", $Recipient);
 		if($altEMailAddress != "") $AnAdresse->changeA("email", $altEMailAddress);
+		if($otherRecipient != "") $AnAdresse->changeA("email", $otherRecipient);
 
-		if($_SESSION["S"]->checkForPlugin("SP")) $PL = new SPGUI();
-		if(isset($_SESSION["viaInterface"]) OR $_SESSION["S"]->checkForPlugin("PL")) $PL = new PLGUI();
+		if($_SESSION["S"]->checkForPlugin("SP"))
+			$PL = new SPGUI();
+		
+		if(isset($_SESSION["viaInterface"]) OR $_SESSION["S"]->checkForPlugin("PL"))
+			$PL = new PLGUI();
 
 		return $PL->sign($GRLBMID, $filename, $AnAdresse, $Subject, $Body, $die);
 	}
@@ -484,14 +488,20 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		#$_SESSION["messages"]->addMessage("creating Adresse for Auftrag ".$this->ID." of Adresse $AdresseID");
 		$p = new Adresse($AdresseID);
 
+		if(Session::isPluginLoaded("Kunden")){
+			$K = Kappendix::getKappendixToAdresse($AdresseID);
+			if($K === null){
+				$Kunden = new Kunden();
+				$Kunden->createKundeToAdresse($AdresseID, false);
+			}
+		}
+		
 		$newAdresseID = $p->newFromAdresse($this->ID);	
 		$this->changeA("AdresseID", $newAdresseID);
 		$this->saveMe();
 		
 		try {
-			$mKApp = new mKappendix();
-			$mKApp->setAssocV3("AdresseID","=",$AdresseID);
-			$KApp = $mKApp->getNextEntry();
+			$KApp = Kappendix::getKappendixToAdresse($AdresseID);
 			
 			if($KApp != null) {
 				$this->forceReload();
@@ -509,6 +519,18 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	}
 	// </editor-fold>
 
+	// <editor-fold defaultstate="collapsed" desc="use1xAdresse">
+	public function use1xAdresse($AdresseID){
+		$p = new Adresse($AdresseID);
+
+		$p->changeA("AuftragID", $this->getID());
+		$p->saveMe(true, false);
+		
+		$this->changeA("AdresseID", $AdresseID);
+		$this->saveMe(true, false);
+	}
+	// </editor-fold>
+	
 	// <editor-fold defaultstate="collapsed" desc="getNextNumber">
 	public static function getNextNumber($type){
 		$startNumber = $re_nr = "".date("y")."001";
@@ -576,7 +598,7 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			$GA->GRLBMCreatedByUserID = Session::currentUser()->getID();
 		}
 		
-		if(Session::isPluginLoaded("Kunden"))
+		if(Session::isPluginLoaded("Kunden") OR Session::isPluginLoaded("mKappendix"))
 			$KA = Kappendix::getKappendixToKundennummer($this->A("kundennummer"));
 		else
 			$KA = null;
@@ -612,6 +634,14 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 			if(isset($GA->zahlungsziel) AND $KA->A("KappendixZahlungsziel") != null)
 				$GA->zahlungsziel = (time() + $KA->A("KappendixZahlungsziel") * 3600 * 24);
+			
+			$sepaData = new stdClass();
+			$sepaData->IBAN = $KA->A("KappendixIBAN");
+			$sepaData->BIC = $KA->A("KappendixSWIFTBIC");
+			$sepaData->MandateDate = $KA->A("KappendixIBANMandatDatum");
+			$sepaData->MandateID = $KA->A("KappendixIBANMandatReferenz") != "" ? $KA->A("KappendixIBANMandatReferenz") : substr($KA->A("kundennummer").str_replace(" ", "", $KA->A("KappendixIBAN")), 0, 34);
+			
+			$GA->GRLBMSEPAData = json_encode($sepaData);
 		} else {
 
 			try {
@@ -674,6 +704,8 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 		
 		$newID = $G->newMe();
 		
+		Aspect::joinPoint("alterGRLBM", $this, __METHOD__, array($newID));
+		
 		$this->A->auftragDatum = time();
 
 		$this->updateStatus($type, false);
@@ -701,6 +733,9 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 		if($type == "declined")
 			$newStatus = "declined";
+
+		if($type == "RT")
+			$newStatus = "billedPartly";
 
 		if($newStatus != "")
 			$this->changeA("status", $newStatus);
@@ -753,10 +788,10 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 	}
 	
 	// <editor-fold defaultstate="collapsed" desc="sendViaEmail">
-	function sendViaEmail($GRLBMID, $Recipient = "", $Subject = "", $Body = "", $die = true){
+	function sendViaEmail($GRLBMID, $Recipient = "", $Subject = "", $Body = "", $die = true, $attachments = "", $otherRecipient = ""){
 		$G = new GRLBM($GRLBMID);
 		
-		$brief = $this->getLetter("", false, $GRLBMID);
+		$brief = $this->getLetter("Email", false, $GRLBMID);
 		$filename = $brief->generate(true);
 		
 		$Stammdaten = mStammdaten::getActiveStammdaten();
@@ -764,6 +799,9 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 
 		if($Recipient == "")
 			$Recipient = $this->getSingleEMailRecipient($G, $AnAdresse, true, $die);
+		
+		if($otherRecipient != "")
+			$Recipient = $otherRecipient;
 		
 		list($OSubject, $OBody) = AuftragGUI::getEMailTBs($AnAdresse, $Stammdaten, $G, $die);
 
@@ -821,6 +859,24 @@ class Auftrag extends PersistentObject implements iReNr, iCloneable, iDeletable,
 			);
 		}
 		
+		if(trim($attachments) != ""){
+			$attachments = str_replace("attach_", "", $attachments);
+			$attachments = str_replace("=on", "", $attachments);
+			$attachments = explode("&", $attachments);
+			
+			foreach($attachments AS $AGRLBMID){
+				$briefAttached = $this->getLetter("Email", false, $AGRLBMID);
+				$filenameAttached = $briefAttached->generate(true);
+
+				$mail->addAttachment(
+					new fileAttachment(
+						$filenameAttached,
+						'application/pdf',
+						new Base64Encoding())
+				);
+			}
+		
+		}
 		#$ud = new mUserdata();
     	if(Session::isPluginLoaded("mFile") AND mUserdata::getUDValueS("sendBelegViaEmailAttachments", "false") == "true"){
 			$D = new mDateiGUI();

@@ -41,6 +41,10 @@ class StammdatenGUI extends Stammdaten implements iGUIHTML2 {
 		} catch (TableDoesNotExistException $e){
 			
 		}
+		
+		$bps = $this->getMyBPSData();
+		if($bps != -1 AND isset($bps["overwrite"]))
+			self::$locked = false;
 	}
 	
 	function getHTML($id){
@@ -73,7 +77,7 @@ class StammdatenGUI extends Stammdaten implements iGUIHTML2 {
 			#"template",
 			"ownTemplate",
 			"ownTemplatePrint",
-			"ownTemplateEmail",
+			"ownTemplateEmailNew",
 			"templateReNr",
 			"firmaKurz",
 			"firmaLang",
@@ -116,20 +120,24 @@ class StammdatenGUI extends Stammdaten implements iGUIHTML2 {
 		$gui->label("strasse","Straße");
 		$gui->label("geschaeftsfuehrer","Geschäftsführer");
 		$gui->label("templateReNr","Nummern");
-		$gui->label("ownTemplate","Vorlage");
-		$gui->label("ownTemplatePrint","Vorlage");
+		$gui->label("ownTemplate","Vorlage PDF");
+		$gui->label("ownTemplatePrint","Vorlage Druck");
+		$gui->label("ownTemplateEmailNew","Vorlage E-Mail");
 		
 		
 		$gui->type("ownTemplate","select", $a);
-		$gui->descriptionField("ownTemplate","für PDF-Ausgabe und E-Mail");
+		$gui->descriptionField("ownTemplate","für PDF-Ausgabe");
 		
-		$gui->type("ownTemplatePrint","select", $a);
+		$gui->type("ownTemplatePrint","select", array_merge(array("" => "Wie PDF-Ausgabe"), $a));
 		$gui->descriptionField("ownTemplatePrint","für direkt-Druck");
+		
+		$gui->type("ownTemplateEmailNew","select", array_merge(array("" => "Wie PDF-Ausgabe"), $a));
+		$gui->descriptionField("ownTemplateEmailNew","für E-Mail-Versand");
 		
 		if(!$_SESSION["S"]->checkForPlugin("mDrucker"))
 			$gui->type("ownTemplatePrint", "hidden");
 		
-		$gui->type("ownTemplateEmail","hidden");
+		#$gui->type("ownTemplateEmail","hidden");
 		$gui->descriptionField("geschaeftsfuehrer","Bitte geben Sie einen Inhaber <b>oder</b> Geschäftsführer ein");
 		$gui->descriptionField("inhaber","Bitte geben Sie einen Inhaber <b>oder</b> Geschäftsführer ein");
 
@@ -188,7 +196,7 @@ class StammdatenGUI extends Stammdaten implements iGUIHTML2 {
 			$B->style("float:right;margin-left:10px;");
 			$B->onclick("contentManager.rmePCR('Stammdaten', '".$this->getID()."', 'cloneMe', [''], function(transport){ lastLoadedLeft = (transport.responseText == '' ? -1 : transport.responseText); contentManager.reloadFrameLeft(); contentManager.reloadFrameRight(); }, '', true );");
 			
-			$TL->addRow(array("{$B}Diese Stammdaten können nicht mehr bearbeitet werden, da sie in mehr als 10 Aufträgen verwendet werden. Bitte kopieren Sie diese Stammdaten, um Änderungen vorzunehmen."));
+			$TL->addRow(array("{$B}Diese Stammdaten können nicht mehr bearbeitet werden, da sie in mehr als 10 Aufträgen verwendet werden. Bitte kopieren Sie diese Stammdaten, um Änderungen vorzunehmen.<a href=\"#\" onclick=\"".OnEvent::frame("Left", "Stammdaten", $this->getID(), 0, "", "StammdatenGUI;overwrite:true")."return false;\" class=\"hiddenLink\">&nbsp;</a>"));
 			$TL->addRowClass("highlight");
 		} else {
 			$BN = new Button("", "notice", "icon");

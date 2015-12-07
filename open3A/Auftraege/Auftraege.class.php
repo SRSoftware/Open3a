@@ -27,7 +27,12 @@ class Auftraege extends anyC implements iPluginSpecificRestrictions {
 	}
 	
 	function getPluginSpecificRestrictions(){
-		$a = array("pluginSpecificCanSetPayed" => "kann Rechnungen als bezahlt/storniert markieren","pluginSpecificCanOnlyEditOwn" => "kann nur eigene Aufträge bearbeiten", "pluginSpecificCanOnlySeeKalk" => "kann nur Kalkulation benutzen");
+		$a = array(
+			"pluginSpecificCanSetPayed" => "kann Rechnungen als bezahlt/storniert markieren",
+			"pluginSpecificCanRemovePayed" => "kann bezahlt/storniert-Markierung aufheben",
+			"pluginSpecificCanOnlyEditOwn" => "kann nur eigene Aufträge bearbeiten",
+			"pluginSpecificCanOnlySeeKalk" => "kann nur Kalkulation benutzen",
+			"pluginSpecificCantCreateR" => "kann keine Rechnungen erstellen");
 		$Us = new Users();
 		$Us->addAssocV3("isAdmin","=","0");
 		while(($t = $Us->getNextEntry()))
@@ -48,13 +53,19 @@ class Auftraege extends anyC implements iPluginSpecificRestrictions {
 	}
 
 	public static function getStatus(){
-		$status = array("open" => "offen", "confirmed" => "bestätigt", "delivered" => "geliefert", "billed" => "berechnet", "declined" => "abgelehnt");
+		$status = array("open" => "offen", "confirmed" => "bestätigt", "delivered" => "geliefert", "billed" => "berechnet");
+		
+		if(Session::isPluginLoaded("Abschlussrechnung"))
+			$status["billedPartly"] = "teilweise berechnet";
+		$status["declined"] = "abgelehnt";
+		
+		
 		
 		return Aspect::joinPoint("after", __CLASS__, __METHOD__, $status);
 	}
 
 	public static function getStatusIcons(){
-		$status = array("open" => "book_alt2", "confirmed" => "check", "delivered" => "box", "billed" => "book_alt", "declined" => "x");
+		$status = array("open" => "book_alt2", "confirmed" => "check", "delivered" => "box", "billed" => "book_alt", "declined" => "x", "billedPartly" => "hash");
 		
 		return Aspect::joinPoint("after", __CLASS__, __METHOD__, $status);
 	}

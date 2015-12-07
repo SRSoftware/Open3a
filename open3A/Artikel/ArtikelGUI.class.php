@@ -46,10 +46,12 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 			"name",
 			"gebinde",
 			"artikelnummer",
+			#"keinLagerbestand",
 			"KategorieID",
 			"KategorieID2",
 			"beschreibung",
 			"preis",
+			"isBrutto",
 			"aufschlagListenpreis",
 			"aufschlagGesamt",
 			"mwst",
@@ -60,25 +62,28 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 			"Lohnminuten",
 			"bild",
 			"bemerkung",
+			"erloeskonto",
 			"hideInReport",
-			"isBrutto",
 			"bruttopreis",
 			"bildDateiName"));
 		
 		if(Session::isPluginLoaded("mDifferenzbesteuerung"))
-			$gui->insertAttribute ("after", "isBrutto", "differenzbesteuert");
+			$gui->insertAttribute ("after", "hideInReport", "differenzbesteuert");
 		
 		$gui->setType("isBrutto","hidden");
-		if(Session::isPluginLoaded("mBrutto") AND !Session::isPluginLoaded("mLohngruppe") AND !Session::isPluginLoaded("mMwSt")){
+		$gui->setLabel("isBrutto","Bruttopreis?");
+		$gui->setFieldDescription("isBrutto","Ist der angegebene Preis ein Bruttopreis?");
+		if(Session::isPluginLoaded("mBrutto") AND !Session::isPluginLoaded("mLohngruppe")){
 			$gui->setType("isBrutto","checkbox");
-			$gui->setLabel("isBrutto","Bruttopreis?");
-			$gui->setFieldDescription("isBrutto","Ist der angegebene Preis ein Bruttopreis?");
 			$gui->setLabel("preis","Preis");
 			$gui->activateFeature("addSaveDefaultButton", $this, "isBrutto");
 		}
-
+		
 		if(!Session::isPluginLoaded("ImportDatanorm"))
 			$gui->hideAttribute("rabattgruppe");
+		
+		if(!Session::isPluginLoaded("mexportLexware"))
+			$gui->hideAttribute("erloeskonto");
 
 		
 		$gui->setParser("artikelnummer", "ArtikelGUI::parserArtikelnummer");
@@ -86,6 +91,7 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 		$gui->setObject($this);
 		$gui->setName($this->languageClass->getSingular());
 		
+		$gui->setLabel("erloeskonto", "Erlöskonto");
 		$gui->setLabel("KategorieID2", "Kategorie 2");
 		if($this->A("KategorieID2") == "0")
 			$gui->setLineStyle("KategorieID2", "display:none;");
@@ -253,6 +259,9 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK"))
 			$gui->setType("EK2", "hidden");
 		
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK1"))
+			$gui->setType("EK1", "hidden");
+		
 		
 		if(Session::isPluginLoaded("mVermietet"))
 			$ST->addRow(Vermietet::getButton("Artikel", $this->getID()));
@@ -278,6 +287,13 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 
 
 	public function getCalcTable($echo = "0"){
+		$hideEK = false;
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK"))
+			$hideEK = true;
+		
+		if(mUserdata::getPluginSpecificData("Provisionen", "pluginSpecificHideEK1"))
+			$hideEK = true;
+		
 		$CT = new HTMLTable(2);
 		$CT->setColClass(1, "");
 		$CT->setColClass(2, "");
@@ -310,6 +326,12 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 		$CT->addCellStyle(1, "border-top-style:double;");
 		$CT->addCellStyle(2, "border-top-style:double;");
 		
+		if($hideEK){
+			$CT = new HTMLTable(2);
+			$CT->setColClass(1, "");
+			$CT->setColClass(2, "");
+			$CT->addColStyle(2, "text-align:right;");
+		}
 			
 			
 		$CT->addRow(array("&nbsp;"));
@@ -349,7 +371,8 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 			$CT->addCellStyle(2, "border-top-style:double;");
 		#}
 		
-		$CT->addRow(array("<b>Gewinn:</b>", Util::CLNumberParserZ($nettoVK - $nettoEK)));
+		if(!$hideEK)
+			$CT->addRow(array("<b>Gewinn:</b>", Util::CLNumberParserZ($nettoVK - $nettoEK)));
 
 		if(!Session::isPluginLoaded("mMwSt"))
 			$CT->addRow(array("<b>Brutto:</b>", Util::CLNumberParserZ($this->getGesamtBruttoVK())));
@@ -379,7 +402,7 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 			
 			$IM = new HTMLInput("preisModus", "select", $p, array("0" => "Nach Lieferant", "1" => "Festpreis"));
 			$IM->style("width:45%;margin-left:5%;");
-			$IM->onchange("contentManager.toggleFormFieldsTest(\$j(this).val() == '0', ['aufschlagGesamt', 'aufschlagListenpreis'], []); if(\$j(this).val() == '1') { \$j('input[name=preis]').prop('disabled', ''); } else { \$j('input[name=preis]').prop('disabled', 'disabled'); }");
+			$IM->onchange("contentManager.toggleFormFieldsTest(\$j(this).val() == '0', ['aufschlagGesamt', 'aufschlagListenpreis'], ['isBrutto']); if(\$j(this).val() == '1') { \$j('input[name=preis]').prop('disabled', ''); } else { \$j('input[name=preis]').prop('disabled', 'disabled'); }");
 		}
 		
 		return "$B$I$IM";
@@ -439,6 +462,10 @@ class ArtikelGUI extends Artikel implements iGUIHTML2 {
 			echo $Image;
 		
 		return $Image;
+	}
+	
+	public function ACLabel(){
+		return $this->A("name");
 	}
 }
 ?>

@@ -88,6 +88,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$message["G"] = "Diese Gutschrift wurde als bezahlt makiert und kann daher nicht mehr bearbeitet werden.";
 		$message["B"] = "Diese Auftragsbestätigung wurde gesperrt.";
 		$message["A"] = "Für dieses Angebot wurde eine Auftragsbestätigung erstellt. Die Posten können daher nicht mehr verändert werden.";
+		$message["L"] = "Dieser Lieferschein wurde gesperrt.";
 
 		if($bps["GRLBMType"] == "Kalk" AND $view < 3) $view = 3;
 		#print_r($this->getMyBPSData());
@@ -155,7 +156,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			else{
 				$unlock = "";
 				$pSpecData = mUserdata::getPluginSpecificData("Auftraege");
-				if(isset($pSpecData["pluginSpecificCanSetPayed"])) 
+				if(isset($pSpecData["pluginSpecificCanSetPayed"]) AND isset($pSpecData["pluginSpecificCanRemovePayed"]))
 					$unlock = "<span style=\"float:right;\"><a href=\"#\" onclick=\"".OnEvent::rme($GRLBM, "setPayed", array("'false'"), "function(){ Auftrag.reloadBeleg(".$GRLBM->getID().") }")." return false;\" style=\"color:grey;\">Markierung aufheben</a></span>";
 				
 				$T .= "<p class=\"highlight\" style=\"margin-right:10px;\">$unlock".$message[$bps["GRLBMType"]]."</p>";
@@ -164,7 +165,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$BOP = new Button("Operationen", "wrench", "iconicG");
 		$BOP->onclick("phynxContextMenu.start(this, 'mPosten','100:$bps[loadGRLBMID]','Optionen anzeigen:');");
 		$BOP->style("margin-top:5px;margin-left:5px;");
-
+		
 		$html = Aspect::joinPoint("prepend", $this, __METHOD__, $MArgs, "")."<div style=\"clear:right;padding-top:60px;\" class=\"prettySubtitle\">Posten von ".$GRLBM->A("prefix").$GRLBM->A("nummer")."$BOP</div>$T<div class=\"Tab backgroundColor1\" style=\"font-weight:bold;\"><p>".Stammdaten::getLongType($bps["GRLBMType"],true)."posten:"."</p></div>";
 
 		#$tabC1 = new HTMLTable(2);
@@ -251,7 +252,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 				$divC1 .= $this->belegAction("Excel-Datei importieren", $FUGL);
 			}
 			
-			if(Session::isPluginLoaded("mLager") AND $GRLBM->getMyPrefix() != "O"){
+			if(Session::isPluginLoaded("mLager") AND $GRLBM->getMyPrefix() != "O" AND !Session::isPluginLoaded("mLagerbestandWare")){
 				$IL = new HTMLInput("lager", "select", mUserdata::getUDValueS("userMainLager", "0"));
 				$IL->setOptions(anyC::get("Lager"), "LagerName", "Standardlager", array("-1" => "Ohne Lagerbuchung"));
 				$IL->onchange(OnEvent::rme("mUserdata", "setUserdata", array("'userMainLager'", "this.value")));
@@ -331,14 +332,33 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			$Belege = $this->getCopyBelege($GRLBM);
 		
 			if($Belege->numLoaded() > 0){
+				$BC = new Button("Auswahl\nkopieren", "seiten");#OnEvent::rme($GRLBM, "copyFromMulti", array("joinFormFieldsToString('AuftragCopyBelege')"))
+				$BC->rmePCR("GRLBM", $GRLBM->getID(), "copyPostenFromMulti", array("joinFormFieldsToString('AuftragCopyBelege')"), "function(){ contentManager.loadFrame('subframe', 'GRLBM', ".$GRLBM->getID()."); }");
+				$BC->style("margin-right:5px;");
+				$BC->disabled(true);
+				$BC->id("AuftragCopyBelegeButton");
+				$BC->className("backgroundColor0");
+				
+				$BI = new Button("Alle\nauswählen", "new");
+				$BI->style("margin-right:10px;");
+				$BI->onclick("\$j('#AuftragCopyBelege input').prop('checked', true).trigger('change');");
+				$BI->className("backgroundColor0");
+				
+				$BN = new Button("Keinen\nauswählen", "clear");
+				$BN->style("margin-right:10px;");
+				$BN->onclick("\$j('#AuftragCopyBelege input').prop('checked', false).trigger('change');");
+				$BN->className("backgroundColor0");
+				
 				#$tabC2->addRow(array("",""));
 				#$tabC2->addRowClass("backgroundColor0");
-				$divC2 = "<div class=\"spell\"><p class=\"backgroundColor3\" style=\"margin-bottom:5px;\">";
+				$divC2 = "<div class=\"spell\"><p class=\"backgroundColor3\">";
 				if($GRLBM->getMyPrefix() != "O" AND $GRLBM->getMyPrefix() != "P")
 					$divC2 .= "Posten aus Beleg aus diesem Auftrag kopieren";
 				else
 					$divC2 .= "Aktuelle Angebote und Auftragsbestätigungen";
-				$divC2 .= "</p>";
+				
+				
+				$divC2 .= "</p><div class=\"backgroundColor4\" style=\"margin-bottom:10px;padding:5px;\">$BI$BN$BC<div style=\"clear:both;\"></div></div><form id=\"AuftragCopyBelege\">";
 				#$tabC2->addRowClass("backgroundColor0");
 				#$tabC2->addRowColspan(1, 2);
 			}
@@ -360,7 +380,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 					$auftragName = $Adresse->getShortAddress();
 				}
 				
-				$divC2 .= mGRLBMGUI::belegBox($B, "Auftrag.copyPostenFrom('".$B->getID()."','".$GRLBM->getID()."','','subframe');", $auftragName);
+				$divC2 .= mGRLBMGUI::belegBox($B, "Auftrag.copyPostenFrom('".$B->getID()."','".$GRLBM->getID()."','','subframe');", $auftragName, "if(\$j('#AuftragCopyBelege input:checked').length) \$j('#AuftragCopyBelegeButton').prop('disabled', false).addClass('highlight'); else \$j('#AuftragCopyBelegeButton').prop('disabled', true).removeClass('highlight');");
 				
 				#$pre = $B->getMyPrefix();
 				#$tabC2->addRow(array(
@@ -370,7 +390,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 			}
 			
 			if($Belege->numLoaded() > 0)
-				$divC2 .= "</div>";
+				$divC2 .= "</form></div>";
 		}
 
 		$html .= $divC1."<div id=\"copyList\" style=\"margin-left:10px;width:95%;".(($this->numLoaded() == 0 OR $view == 4) ? "" : "display:none;")."\">".$divC2."</div>"."
@@ -459,7 +479,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 					<div id=\"posNr".$t->getID()."\">".$positionsNummern[$t->getID()]."</div>",
 					"$BEdit$BTrash
 					<input
-						style=\"width:90%;text-align:left;font-weight:bold;\"
+						style=\"width:80%;text-align:left;font-weight:bold;\"
 						class=\"multiEditInput2 postenNameInput\"
 						onfocus=\"oldValue = this.value;\"
 						onblur=\"if(oldValue != this.value) saveMultiEditInput('Posten','".$t->getID()."','name');\"
@@ -563,7 +583,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 
 		$autofocus = "<script type=\"text/javascript\">/*$('mengeID$lastID').focus();*/</script>";
 		$autofocus = Aspect::joinPoint("autofocus", $this, __METHOD__, array($autofocus), $autofocus);
-		$html .= ($lastID != null ? $autofocus : "")."</ul></form>"."<div id=\"belegSummen\" style=\"".(!$showPrices ? "display:none;" : "")."\">".$this->getSummen()."</div>".OnEvent::script("\$j('#PostenSortableContainer').css('max-height', contentManager.maxHeight()+'px');");
+		$html .= ($lastID != null ? $autofocus : "")."</ul></form>".Aspect::joinPoint("aboveSum", $this, __METHOD__, array($GRLBM), "")."<div id=\"belegSummen\" style=\"".(!$showPrices ? "display:none;" : "")."\">".$this->getSummen()."</div>".OnEvent::script("\$j('#PostenSortableContainer').css('max-height', contentManager.maxHeight()+'px');");
 
 		if($this->CustomizerPostenSort) $html .= "
 			<script type=\"text/javascript\">
@@ -710,7 +730,7 @@ class mPostenGUI extends mPosten implements iGUIHTML2, icontextMenu {
 		$Belege->addOrderV3("isG", "DESC");
 		$Belege->addOrderV3("isWhat", "DESC");
 
-		$Belege->setLimitV3("12");
+		#$Belege->setLimitV3("12");
 		$Belege->lCV3();
 
 		return $Belege;

@@ -23,12 +23,13 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 		"UStIdNr"/*,"KappendixErloeskonto"*/,
 		"KappendixSameKontoinhaber",
 		"KappendixKontoinhaber",
-		"KappendixKontonummer",
-		"KappendixBLZ",
+		#"KappendixKontonummer",
+		#"KappendixBLZ",
 		"KappendixIBAN",
 		"KappendixSWIFTBIC",
 		"KappendixEinzugsermaechtigung",
 		"KappendixIBANMandatDatum",
+		"KappendixIBANMandatReferenz",
 		"KappendixEinzugsermaechtigungAltZBTB",
 		"KappendixKreditkarte",
 		"KappendixKartennummer",
@@ -159,6 +160,7 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 		$gui->setLabel("KappendixKarteValidUntil","gültig bis");
 		$gui->setLabel("KappendixEinzugsermaechtigungAltZBTB","ZahlBed.");
 		$gui->setLabel("KappendixIBANMandatDatum", "Mandatsdatum");
+		$gui->setLabel("KappendixIBANMandatReferenz", "Mandatsreferenz");
 		
 		$B = new Button("USt-IdNt überprüfen","./images/i2/okCatch.png");
 		$B->type("icon");
@@ -166,7 +168,7 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 
 		$gui->activateFeature("addCustomButton", $this, "UStIdNr", $B);
 
-		$gui->setInputJSEvent("KappendixEinzugsermaechtigung", "onclick", "contentManager.toggleFormFields(!this.checked ? 'hide' : 'show', ['KappendixEinzugsermaechtigungAltZBTB', 'KappendixIBANMandatDatum']);");
+		$gui->setInputJSEvent("KappendixEinzugsermaechtigung", "onclick", "contentManager.toggleFormFields(!this.checked ? 'hide' : 'show', ['KappendixEinzugsermaechtigungAltZBTB', 'KappendixIBANMandatDatum', 'KappendixIBANMandatReferenz']);");
 
 		$tb = new Textbausteine();
 		list($keys,$values) = $tb->getTBs("zahlungsbedingungen","R");
@@ -175,9 +177,11 @@ class KappendixGUI extends Kappendix implements iGUIHTML2, icontextMenu {
 		$gui->setType("KappendixEinzugsermaechtigungAltZBTB","select");
 		$gui->setOptions("KappendixEinzugsermaechtigungAltZBTB", $keys, $values);
 		$gui->setFieldDescription("KappendixEinzugsermaechtigungAltZBTB", "Dieser Textbaustein wird verwendet, wenn eine Einzugsermächtigung erteilt wurde.");
+		$gui->setFieldDescription("KappendixIBANMandatReferenz", "Standard: Kundennummer + IBAN");
 		if($this->A("KappendixEinzugsermaechtigung") === "0"){
 			$gui->setLineStyle("KappendixEinzugsermaechtigungAltZBTB", "display:none;");
 			$gui->setLineStyle("KappendixIBANMandatDatum", "display:none;");
+			$gui->setLineStyle("KappendixIBANMandatReferenz", "display:none;");
 		}
 		$gui->setType("KappendixSameKontoinhaber","checkbox");
 		$gui->setLabel("KappendixSameKontoinhaber", "Inhaber?");

@@ -44,8 +44,8 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		if($parsers){
 			$this->setParser("datum","Util::CLDateParser");
 			$this->setParser("lieferDatum","Util::CLDateParserE");
-			$this->setParser("rabatt","Util::CLNumberParserZ");
-			$this->setParser("rabattInW","Util::CLNumberParserZ");
+			#$this->setParser("rabatt","Util::CLNumberParserZ");
+			#$this->setParser("rabattInW","Util::CLNumberParserZ");
 			$this->setParser("leasingrate","Util::CLNumberParserZ");
 			$this->setParser("payedWithSkonto","Util::CLNumberParserZ");
 			$this->setParser("GRLBMpayedDate","Util::CLDateParserE");
@@ -111,20 +111,23 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="getSumOfPosten">
+	private $gesamt_netto_array;
+	private $artikelsteuern;
+	private $ges_brutto;
+	private $ges_ek1;
+	private $mwst;
+	private $mwstSums;
 	public function getSumOfPosten($returnArray = false, $saveValues = false, $calcUpToPostenID = null){
 		$this->loadMe();
 		$aC = new mPosten();
 		$aC->addAssocV3("GRLBMID", "=", $this->getID());
 		
-		#$aC = anyC::get("Posten", "GRLBMID", $this->getID());
-		
-		$gesamt_netto_array = array();
-		$artikelsteuern = array();
-		#$ges_netto = 0;
-		$ges_brutto = 0;
-		$ges_ek1 = 0;
-		$mwst = array();
-		$mwstSums = array();
+		$this->gesamt_netto_array = array();
+		$this->artikelsteuern = array();
+		$this->ges_brutto = 0;
+		$this->ges_ek1 = 0;
+		$this->mwst = array();
+		$this->mwstSums = array();
 		while($t = $aC->getNextEntry()){
 			if($t->A("PostenIsAlternative") !== null AND $t->A("PostenIsAlternative") > 0)
 				continue;
@@ -132,45 +135,25 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 				continue;
 			}	
 			
-			$rabatt = 1;
-			if(isset($t->getA()->rabatt))
-				$rabatt = (100 - $t->getA()->rabatt) / 100;
+			$this->getSumOfPostenInt($t);
 			
-			
-			$menge2 = ($t->A("menge2") != 0 ? $t->A("menge2") : 1);
-			$nettopreis = $t->A("menge") * $menge2 * $t->A("preis") * $rabatt;
-			
-			
-			if(!isset($gesamt_netto_array[$t->A("mwst")]))
-				$gesamt_netto_array[$t->A("mwst")] = 0;
-
-			$gesamt_netto_array[$t->A("mwst")] += $nettopreis;
-			
-			if(isset($t->getA()->steuer)){
-				if(!isset($artikelsteuern[$t->A("steuer")]))
-					$artikelsteuern[$t->A("steuer")] = 0;
-
-				$artikelsteuern[$t->A("steuer")] += $nettopreis * ($t->A("steuer") / 100);
-			}
-			
-			
-			$posten_brutto = ($t->A("isBrutto") == "1" ? $t->A("bruttopreis") * $t->A("menge") * $menge2 * $rabatt : $t->A("preis") * $t->A("menge") * $menge2 * (100 + $t->A("mwst")) / 100 * $rabatt) ;
-			
-			$ges_brutto += $posten_brutto;
-
-			$ges_ek1 += $t->A("menge") * $menge2 * $t->A("EK1");
-
-			if(array_search($t->A("mwst"), $mwst) === false){
-				$mwst[] = $t->A("mwst");
-				$mwstSums[$t->A("mwst")] = 0;
-			}
-			$mwstSums[$t->A("mwst")] += $posten_brutto;
 			
 			if($calcUpToPostenID != null AND $calcUpToPostenID == $t->getID())
 				break;
-		}
+			}
+			
+			
+		$rabatt = $this->A("rabatt");
+		if($rabatt != 0){
+			$aC = new mPosten();
+			$aC->addAssocV3("PostenID", "=", "-9999999"); //don't load a thing!
+			foreach($this->gesamt_netto_array as $key => $value)
+				$aC->addVirtualPosten(1,"", "", "", $value * ($rabatt / 100) * -1, $key, 0);
+			
+			while($t = $aC->getNextEntry())
+				$this->getSumOfPostenInt($t);
 
-		#if($aC->numLoaded() == 0 AND !$returnArray) return null;
+			}
 
 		/**
 		 * VERSANDKOSTEN
@@ -180,42 +163,42 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 
 			$posten_brutto = $Versand * ((100 + $this->A("versandkostenMwSt")) / 100);
 
-			$ges_brutto += $posten_brutto;
+			$this->ges_brutto += $posten_brutto;
 
-			$ges_ek1 += $Versand;
+			$this->ges_ek1 += $Versand;
 
-			if(!isset($gesamt_netto_array[$this->A("versandkostenMwSt")]))
-				$gesamt_netto_array[$this->A("versandkostenMwSt")] = 0;
+			if(!isset($this->gesamt_netto_array[$this->A("versandkostenMwSt")]))
+				$this->gesamt_netto_array[$this->A("versandkostenMwSt")] = 0;
 			
-			$gesamt_netto_array[$this->A("versandkostenMwSt")] += $Versand;
+			$this->gesamt_netto_array[$this->A("versandkostenMwSt")] += $Versand;
 
-			if(array_search($this->A("versandkostenMwSt"), $mwst) === false)
-				$mwst[] = $this->A("versandkostenMwSt");
+			if(array_search($this->A("versandkostenMwSt"), $this->mwst) === false)
+				$this->mwst[] = $this->A("versandkostenMwSt");
 
-			$mwstSums[$this->A("versandkostenMwSt")] += $posten_brutto;
+			$this->mwstSums[$this->A("versandkostenMwSt")] += $posten_brutto;
 		}
 
 		
-		foreach($mwstSums AS $key => $value)
-			$mwstSums[$key] = Util::kRound($value);
+		foreach($this->mwstSums AS $key => $value)
+			$this->mwstSums[$key] = Util::kRound($value);
 		
 		$steuern = array();
 		$ges_mwst = 0;
-		foreach($gesamt_netto_array AS $key => $value){
+		foreach($this->gesamt_netto_array AS $key => $value){
 			$ges_mwst += Util::kRound($value * ($key / 100));
-			$steuern[$key] = $mwstSums[$key] - $value;
+			$steuern[$key] = $this->mwstSums[$key] - $value;
 		}
 		
-		foreach($artikelsteuern AS $key => $value)
-			$artikelsteuern[$key] = Util::kRound ($value, 2);
+		foreach($this->artikelsteuern AS $key => $value)
+			$this->artikelsteuern[$key] = Util::kRound ($value, 2);
 			
-		$ges_brutto = Util::kRound($ges_brutto);
+		$this->ges_brutto = Util::kRound($this->ges_brutto);
 		$ges_mwst = Util::kRound($ges_mwst);
 
-		if(array_sum($mwstSums) != $ges_brutto){ //fix round errors
-			$diff = array_sum($mwstSums) - $ges_brutto;
-			foreach($mwstSums AS $m => $v){ //just to find the first entry!
-				$mwstSums[$m] = $v - $diff;
+		if(array_sum($this->mwstSums) != $this->ges_brutto){ //fix round errors
+			$diff = array_sum($this->mwstSums) - $this->ges_brutto;
+			foreach($this->mwstSums AS $m => $v){ //just to find the first entry!
+				$this->mwstSums[$m] = $v - $diff;
 				break;
 			}
 		}
@@ -228,27 +211,63 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 			$oC->addAssocV3("isR", "=" , "1");
 
 			while($r = $oC->getNextEntry()){
-				$ges_brutto -= $r->A("bruttobetrag");
+				$this->ges_brutto -= $r->A("bruttobetrag");
 				$ges_mwst -= $r->A("steuern");
 			}
 		}
 		
-		$ges_brutto = Aspect::joinPoint("alterGesBrutto", $this, __METHOD__, array($ges_brutto), $ges_brutto);
+		$this->ges_brutto = Aspect::joinPoint("alterGesBrutto", $this, __METHOD__, array($this->ges_brutto), $this->ges_brutto);
 		
-		$ges_netto = $ges_brutto - $ges_mwst;
+		$ges_netto = $this->ges_brutto - $ges_mwst;
 
-		$ges_brutto += array_sum($artikelsteuern);
+		$this->ges_brutto += array_sum($this->artikelsteuern);
 		
 		if($saveValues) {
 			$this->changeA("nettobetrag", $ges_netto);
-			$this->changeA("bruttobetrag", $ges_brutto);
+			$this->changeA("bruttobetrag", $this->ges_brutto);
 			$this->changeA("steuern", $ges_mwst);
-			$this->changeA("ek1betrag", $ges_ek1);
+			$this->changeA("ek1betrag", $this->ges_ek1);
 			$this->saveMe();
 		}
 
-		if(!$returnArray) return $ges_brutto;
-		else return array($ges_netto, $ges_mwst, $ges_brutto, $mwst, $ges_ek1, $mwstSums, $gesamt_netto_array, $steuern);
+		if(!$returnArray) return $this->ges_brutto;
+		else return array($ges_netto, $ges_mwst, $this->ges_brutto, $this->mwst, $this->ges_ek1, $this->mwstSums, $this->gesamt_netto_array, $steuern);
+	}
+	
+	private function getSumOfPostenInt($t){
+		$rabatt = 1;
+		if(isset($t->getA()->rabatt))
+			$rabatt = (100 - $t->getA()->rabatt) / 100;
+
+
+		$menge2 = ($t->A("menge2") != 0 ? $t->A("menge2") : 1);
+		$nettopreis = $t->A("menge") * $menge2 * $t->A("preis") * $rabatt;
+
+
+		if(!isset($this->gesamt_netto_array[$t->A("mwst")]))
+			$this->gesamt_netto_array[$t->A("mwst")] = 0;
+
+		$this->gesamt_netto_array[$t->A("mwst")] += $nettopreis;
+
+		if(isset($t->getA()->steuer)){
+			if(!isset($this->artikelsteuern[$t->A("steuer")]))
+				$this->artikelsteuern[$t->A("steuer")] = 0;
+
+			$this->artikelsteuern[$t->A("steuer")] += $nettopreis * ($t->A("steuer") / 100);
+		}
+
+
+		$posten_brutto = ($t->A("isBrutto") == "1" ? $t->A("bruttopreis") * $t->A("menge") * $menge2 * $rabatt : $t->A("preis") * $t->A("menge") * $menge2 * (100 + $t->A("mwst")) / 100 * $rabatt) ;
+
+		$this->ges_brutto += $posten_brutto;
+
+		$this->ges_ek1 += $t->A("menge") * $menge2 * $t->A("EK1");
+
+		if(array_search($t->A("mwst"), $this->mwst) === false){
+			$this->mwst[] = $t->A("mwst");
+			$this->mwstSums[$t->A("mwst")] = 0;
+		}
+		$this->mwstSums[$t->A("mwst")] += $posten_brutto;
 	}
 	// </editor-fold>
 
@@ -338,7 +357,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 	//  </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="cloneMe">
-	function cloneMe($quiet = false, $AuftragID = null, $date = null){
+	function cloneMe($quiet = false, $AuftragID = null, $date = null, $updatePrices = false){
 		if($this->A == null) $this->loadMe();
 		
 		$_SESSION["BPS"]->setActualClass("clone".get_class($this));
@@ -389,7 +408,7 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		
 		Posten::$recalcBeleg = false;
 		$mP = new mPosten();
-		$mP->cloneAllToGRLBM($oldGRLBMID);
+		$mP->cloneAllToGRLBM($oldGRLBMID, $updatePrices, $Auftrag->A("kundennummer"));
 		if(!$quiet)
 			echo $this->A->AuftragID;
 		Posten::$recalcBeleg = true;
@@ -452,6 +471,16 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 		return $id;
 	}
 	// </editor-fold>
+
+	protected function copyPostenFromMulti($GRLBMIDs){
+		if(count($GRLBMIDs) == 0)
+			return;
+		
+		Aspect::joinPoint("before", $this, __METHOD__, array($GRLBMIDs));
+		
+		foreach($GRLBMIDs AS $GRLBMID)
+			$this->copyPostenFrom($GRLBMID, 0, false);
+	}
 
 	public static $copySortOrder = 0;
 	public $copyPostenFromPostenIDs = array();
@@ -553,15 +582,16 @@ class GRLBM extends PersistentObject implements iCloneable, iRepeatable, iDeleta
 	// </editor-fold>
 
 	// <editor-fold defaultstate="collapsed" desc="addPosten">
-	public function addPosten($artikelName, $einheit, $anzahl, $preis, $mwst, $beschreibung = "", $isBrutto = false, $oldArtikelID = null, $EK1 = 0){
+	public function addPosten($artikelName, $einheit, $anzahl, $preis, $mwst = null, $beschreibung = "", $isBrutto = false, $oldArtikelID = null, $EK1 = 0){
 		$preis = $preis * 1;
 		$P = new Posten(-1, false);
-		$A = $P->newAttributes();
+		$A = $P->newAttributes($mwst === null ? $this : null);
 		
 		$A->GRLBMID = $this->ID;
 		$A->name = $artikelName;
 		$A->gebinde = $einheit;
 		$A->preis = $preis;
+		if($mwst !== null)
 		$A->mwst = $mwst;
 		$A->menge = $anzahl;
 		$A->beschreibung = $beschreibung;
